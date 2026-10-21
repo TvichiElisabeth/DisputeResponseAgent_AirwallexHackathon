@@ -57,5 +57,12 @@
       "currency": "USD",
       "status": "REQUIRES_PAYMENT_METHOD"
     }
-  ]
+  ],
+  "evidence_files": {
+    "A": {
+      "file_id": "Yjc1N2Y5ZjUtZDQ1YS00NTIyLTgwNGYtOWNmY2VlZjMwYzg3LHwsc2csfCxBX2NvbXBlbGxpbmdfZXZpZGVuY2UucGRmXzE3OTI1ODgzNjIyNzY",
+      "sha256": "e7ce3c8cf1a8c84ebbd46b56681045771a22fc1cb07752ab13e7de875b304b7f",
+      "filename": "A_compelling_evidence.pdf"
+    }
+  }
 }
