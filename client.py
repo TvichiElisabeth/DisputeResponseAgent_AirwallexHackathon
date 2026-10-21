@@ -19,7 +19,7 @@ class AirwallexError(Exception):
 
 
 def new_request_id() -> str:
-    """New UUID per new operation. Reuse one only when retrying the same operation."""#reuse is not handled yet when the script crashes
+    """New UUID per new operation. Reuse one only when retrying the same operation."""#reuse is handled in state.py
     return str(uuid.uuid4())
 
 

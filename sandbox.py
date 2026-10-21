@@ -36,17 +36,17 @@ class DisputeSimulator(ABC):
     def open_dispute(self, payment_intent_id: str, stage: str, reason_code: str,
                      due_days: int, amount: float | None = None,
                      comment: str | None = None) -> dict:
-        """Cardholder's bank opens a dispute on a payment."""
+        """Cardholder's bank opens a dispute on a payment."""  #POST /simulation/pa/payment_disputes/create
 
     @abstractmethod
     def issuer_rejects_evidence(self, dispute_id: str, current_stage: str,
                                 due_days: int, comment: str | None = None) -> dict:
-        """Issuer declines the merchant's evidence; dispute moves to the next stage."""
+        """Issuer declines the merchant's evidence; dispute moves to the next stage."""   #POST /simulation/pa/payment_disputes/{id}/escalate
 
     @abstractmethod
     def final_ruling(self, dispute_id: str, in_favor_of: str,
                      amount: float | None = None, comment: str | None = None) -> dict:
-        """Network closes the dispute for the MERCHANT or the CUSTOMER."""
+        """Network closes the dispute for the MERCHANT or the CUSTOMER."""   #POST /simulation/pa/payment_disputes/{id}/resolve
 
 
 class AirwallexSandboxSimulator(DisputeSimulator):
@@ -72,12 +72,14 @@ class AirwallexSandboxSimulator(DisputeSimulator):
         })
         return self.client.post(f"{self.BASE}/create", json=body)
 
+
     def issuer_rejects_evidence(self, dispute_id, current_stage, due_days, comment=None):
         if current_stage not in ESCALATABLE_STAGES:
             raise ValueError(f"Cannot escalate from {current_stage!r}; the sandbox "
                              f"only supports escalating from {sorted(ESCALATABLE_STAGES)}.")
         body = _clean({"due_at": due_in(due_days), "comment": comment})
         return self.client.post(f"{self.BASE}/{dispute_id}/escalate", json=body)
+
 
     def final_ruling(self, dispute_id, in_favor_of, amount=None, comment=None):
         if in_favor_of not in RESOLUTIONS:
@@ -97,14 +99,15 @@ if __name__ == "__main__":
         print("Guard OK:", e)
 
     # 2. Scope check: call resolve on a fake id.
-    #    not_found / validation_error => endpoint reachable, Simulations scope OK.
-    #    401 / 403 => the key is missing the Simulations permission.
     try:
         sim.final_ruling("dsp_does_not_exist", "MERCHANT")
     except AirwallexError as e:
         if e.status in (401, 403):
-            print("Scope PROBLEM: add Simulations > Write to the API key.", e)
+            print("Scope PROBLEM: add 'Simulations > Write' to the API key.", e)
+        elif e.status in (400, 404):
+            print("Scope OK: endpoint rejected the fake id as expected.", e)
         else:
-            print("Scope OK (expected error for a fake id):", e)
+            print("Auth passed, but the sandbox errored on the fake id "
+                  "(not a scope problem). Real test comes in chunk 4.", e)
 
     print("Example deadline format:", due_in(7))
