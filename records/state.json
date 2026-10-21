@@ -26,7 +26,29 @@
       "source": "payment_link"
     }
   },
-  "disputes": {},
+  "disputes": {
+    "A": {
+      "id": "dst_sgpvczt9vhnezsopcom",
+      "payment_intent_id": "int_sgpvm8gfjhney642zoy",
+      "stage": "RFI",
+      "status": "REQUIRES_RESPONSE",
+      "due_at": "2026-10-28T10:50:09+00:00"
+    },
+    "B": {
+      "id": "dst_sgpvvt2bbhnezsp5zgn",
+      "payment_intent_id": "int_sgpvm8gfjhney81lve2",
+      "stage": "CHARGEBACK",
+      "status": "REQUIRES_RESPONSE",
+      "due_at": "2026-10-26T10:50:11+00:00"
+    },
+    "C": {
+      "id": "dst_sgpvvt2bbhnezspqa68",
+      "payment_intent_id": "int_sgpvm8gfjhneybv1l5q",
+      "stage": "CHARGEBACK",
+      "status": "REQUIRES_RESPONSE",
+      "due_at": "2026-10-31T10:50:12+00:00"
+    }
+  },
   "abandoned_payments": [
     {
       "id": "int_sgpvf2z9fhnexzog5vk",
