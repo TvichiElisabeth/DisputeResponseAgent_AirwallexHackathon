@@ -4,7 +4,7 @@ import uuid
 
 import requests
 
-import config
+import core.config as config
 
 
 class AirwallexError(Exception):

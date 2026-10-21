@@ -8,7 +8,7 @@ rewriting any decision code.
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 
-from client import AirwallexClient, AirwallexError
+from core.client import AirwallexClient, AirwallexError
 
 # Sandbox facts from the kit:
 # - PRE_CHARGEBACK auto-accepts in the same second, so we never create it.

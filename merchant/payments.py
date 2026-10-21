@@ -1,9 +1,9 @@
 """Create and confirm one card payment per case, using the sandbox test card."""
 import time
 
-import state as st
-from cases import CASES, Case
-from client import AirwallexClient
+import records.state as st
+from records.cases import CASES, Case
+from core.client import AirwallexClient
 
 #Instructions: Use test card 4035501000000008 with any future expiry and CVC when you create the payment intents.
 TEST_CARD = {

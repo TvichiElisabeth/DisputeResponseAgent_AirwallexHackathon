@@ -1,0 +1,16 @@
+{
+  "request_ids": {
+    "pi_create_A": "2abcb3e8-d761-4bde-91c7-b5ab35df4ef6",
+    "pi_confirm_A": "8767d2ca-26d3-433f-8ec7-42325330583a"
+  },
+  "payments": {
+    "A": {
+      "id": "int_sgpvf2z9fhnexzog5vk",
+      "merchant_order_id": "ORD-A-1792575879",
+      "amount": 1240.0,
+      "currency": "USD",
+      "status": "REQUIRES_PAYMENT_METHOD"
+    }
+  },
+  "disputes": {}
+}

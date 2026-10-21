@@ -1,4 +1,4 @@
-"""Local memory of what we've already done, in out/state.json.
+"""Local memory of what we've already done, in records/state.json.
 
 Stops reruns from duplicating payments or disputes, and keeps request_ids
 so a retry of the same operation reuses the same id.
@@ -6,9 +6,9 @@ so a retry of the same operation reuses the same id.
 import json
 from pathlib import Path
 
-from client import new_request_id
+from core.client import new_request_id
 
-STATE_PATH = Path("out/state.json")
+STATE_PATH = Path(__file__).parent / "state.json"   # always records/state.json
 
 
 def load() -> dict:
