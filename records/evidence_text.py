@@ -39,3 +39,25 @@ Return label generated 01 Oct. Warehouse receipt: not recorded.
 REFUNDS - ORD-9750: none issued.
 """,
 }
+ORDER_FACTS = {
+    "A": {
+        "product_type": "PHYSICAL_GOODS",
+        "order_info": {
+            "id": "ORD-9902",
+            "created_at": "2026-10-14T09:15:00+00:00",
+            "total_amount": 1240.00,
+            "total_currency": "USD",
+            "products": [{"name": "Laptop", "quantity": 1, "unit_price": 1240.00,
+                          "type": "physical_good"}],
+        },
+        "delivery_info": {
+            "status": "DELIVERED",
+            "shipping_company": "DHL",
+            "tracking_number": "JD014600812345",
+            "shipped_at": "2026-10-14T11:00:00+00:00",
+            "delivered_at": "2026-10-14T16:47:00+00:00",
+            "name": "J. MARIN",
+        },
+        "seller_info": {"name": "Demo Shop", "store_url": "https://shop.example.com"},
+    },
+}
