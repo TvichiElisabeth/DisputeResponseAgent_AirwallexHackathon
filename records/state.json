@@ -5,12 +5,35 @@
   },
   "payments": {
     "A": {
+      "id": "int_sgpvm8gfjhney642zoy",
+      "amount": 1240.0,
+      "currency": "USD",
+      "status": "SUCCEEDED",
+      "source": "payment_link"
+    },
+    "B": {
+      "id": "int_sgpvm8gfjhney81lve2",
+      "amount": 18.0,
+      "currency": "USD",
+      "status": "SUCCEEDED",
+      "source": "payment_link"
+    },
+    "C": {
+      "id": "int_sgpvm8gfjhneybv1l5q",
+      "amount": 340.0,
+      "currency": "USD",
+      "status": "SUCCEEDED",
+      "source": "payment_link"
+    }
+  },
+  "disputes": {},
+  "abandoned_payments": [
+    {
       "id": "int_sgpvf2z9fhnexzog5vk",
       "merchant_order_id": "ORD-A-1792575879",
       "amount": 1240.0,
       "currency": "USD",
       "status": "REQUIRES_PAYMENT_METHOD"
     }
-  },
-  "disputes": {}
+  ]
 }
