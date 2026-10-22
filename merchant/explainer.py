@@ -29,7 +29,7 @@ TOOL = {
                                "3 concrete things the person should verify. Else empty.",
             },
         },
-        "required": ["explanation", "what_to_check"],
+        "required": ["explanation"],
     },
 }
 

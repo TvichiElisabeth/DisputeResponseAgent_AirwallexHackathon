@@ -122,7 +122,13 @@ def run(new_information: str | None = None, ask=input) -> list[dict]:
         row["payment_intent_id"] = state["disputes"][row["case"]]["payment_intent_id"]
         flags, summary = read_evidence(state, row["case"], row["reason_type"])
         decision = decide(to_dispute(row, state), flags)
-        info = new_information if row["case"] in state.get("rejections", {}) else None
+        info = None
+        if row["case"] in state.get("rejections", {}):
+            challenged = any(op.startswith(f"challenge_{row['case']}_")
+                             for op in state.get("actions", {}))
+            info = (new_information or "The issuing bank rejected our evidence.")
+            if challenged:
+                info += " Our previous decision on this case was CHALLENGE."
         note = explain(decision, flags, summary, new_information=info)
         items.append({"row": row, "flags": flags, "decision": decision, "note": note})
 
