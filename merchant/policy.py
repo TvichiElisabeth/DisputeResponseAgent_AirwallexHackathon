@@ -84,7 +84,8 @@ def win_probability(reason_type: str, f: EvidenceFlags) -> float:
     return round(min(max(p, 0.0), 0.95), 2)
 
 
-def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None) -> Decision:
+def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None,
+           evidence_ready: bool = False) -> Decision:
     now = now or datetime.now(timezone.utc)
 
     # ---- state guards ----
@@ -126,10 +127,11 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None) -> Decisio
 
     # Rule 3: expected cost, with a minimum win chance and enough time to prepare
     worth_challenging = p >= MIN_CHALLENGE_PROB and cost_challenge < cost_accept
-    if worth_challenging and days_left < MIN_DAYS_TO_CHALLENGE:
-        return out(ACCEPT, needs_human,
-                   f"Would challenge (win chance {p:.0%}), but only {days_left} days are "
-                   f"left: not enough time to prepare and submit evidence.")
+    if worth_challenging and days_left < MIN_DAYS_TO_CHALLENGE and not evidence_ready:
+        return out(ESCALATE, True,
+                   f"Worth challenging (win chance {p:.0%}), but only {days_left} days are "
+                   f"left and the evidence isn't prepared. A person decides now: rush the "
+                   f"evidence or concede.")
     if worth_challenging:
         return out(CHALLENGE, needs_human,
                    f"Win chance {p:.0%}: expected cost ${cost_challenge:,.2f} if we "

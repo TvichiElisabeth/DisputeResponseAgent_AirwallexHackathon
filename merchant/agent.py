@@ -121,7 +121,9 @@ def run(new_information: str | None = None, ask=input) -> list[dict]:
     for row in open_cases(client, state):
         row["payment_intent_id"] = state["disputes"][row["case"]]["payment_intent_id"]
         flags, summary = read_evidence(state, row["case"], row["reason_type"])
-        decision = decide(to_dispute(row, state), flags)
+        prepared = state.get("evidence_files", {}).get(row["case"], {})
+        decision = decide(to_dispute(row, state), flags,
+                          evidence_ready=prepared.get("dispute_id") == row["id"])
         info = None
         if row["case"] in state.get("rejections", {}):
             challenged = any(op.startswith(f"challenge_{row['case']}_")
