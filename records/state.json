@@ -1,19 +1,15 @@
 {
   "request_ids": {
     "pi_create_A": "2abcb3e8-d761-4bde-91c7-b5ab35df4ef6",
-    "pi_confirm_A": "8767d2ca-26d3-433f-8ec7-42325330583a"
+    "pi_confirm_A": "8767d2ca-26d3-433f-8ec7-42325330583a",
+    "challenge_A_dst_sgpvczt9vhnezsopcom_RFI": "d6122ac8-5068-4e33-9b16-c8ffc056f9a9",
+    "accept_B_dst_sgpvvt2bbhnezsp5zgn": "699c4a7f-2449-4dbc-90d0-29d50203d94b",
+    "accept_B_dst_sgpvczt9vhng0du698v": "7b32aa0c-1d3b-4e2c-adcc-51954f91ea81"
   },
   "payments": {
     "A": {
       "id": "int_sgpvm8gfjhney642zoy",
       "amount": 1240.0,
-      "currency": "USD",
-      "status": "SUCCEEDED",
-      "source": "payment_link"
-    },
-    "B": {
-      "id": "int_sgpvm8gfjhney81lve2",
-      "amount": 18.0,
       "currency": "USD",
       "status": "SUCCEEDED",
       "source": "payment_link"
@@ -24,22 +20,22 @@
       "currency": "USD",
       "status": "SUCCEEDED",
       "source": "payment_link"
+    },
+    "B": {
+      "id": "int_sgpvm8gfjhng092vth7",
+      "amount": 18.0,
+      "currency": "USD",
+      "status": "SUCCEEDED",
+      "source": "payment_link"
     }
   },
   "disputes": {
     "A": {
       "id": "dst_sgpvczt9vhnezsopcom",
       "payment_intent_id": "int_sgpvm8gfjhney642zoy",
-      "stage": "RFI",
-      "status": "REQUIRES_RESPONSE",
-      "due_at": "2026-10-28T10:50:09+00:00"
-    },
-    "B": {
-      "id": "dst_sgpvvt2bbhnezsp5zgn",
-      "payment_intent_id": "int_sgpvm8gfjhney81lve2",
       "stage": "CHARGEBACK",
       "status": "REQUIRES_RESPONSE",
-      "due_at": "2026-10-26T10:50:11+00:00"
+      "due_at": "2026-10-28T13:40:26+00:00"
     },
     "C": {
       "id": "dst_sgpvvt2bbhnezspqa68",
@@ -47,6 +43,13 @@
       "stage": "CHARGEBACK",
       "status": "REQUIRES_RESPONSE",
       "due_at": "2026-10-31T10:50:12+00:00"
+    },
+    "B": {
+      "id": "dst_sgpvczt9vhng0du698v",
+      "payment_intent_id": "int_sgpvm8gfjhng092vth7",
+      "stage": "RFI",
+      "status": "REQUIRES_RESPONSE",
+      "due_at": "2026-10-27T08:57:33+00:00"
     }
   },
   "abandoned_payments": [
@@ -63,6 +66,27 @@
       "file_id": "Yjc1N2Y5ZjUtZDQ1YS00NTIyLTgwNGYtOWNmY2VlZjMwYzg3LHwsc2csfCxBX2NvbXBlbGxpbmdfZXZpZGVuY2UucGRmXzE3OTI1ODgzNjIyNzY",
       "sha256": "e7ce3c8cf1a8c84ebbd46b56681045771a22fc1cb07752ab13e7de875b304b7f",
       "filename": "A_compelling_evidence.pdf"
+    }
+  },
+  "actions": {
+    "challenge_A_dst_sgpvczt9vhnezsopcom_RFI": {
+      "status": "CHALLENGED",
+      "stage": "RFI",
+      "evidence_sha256": "e7ce3c8cf1a8c84ebbd46b56681045771a22fc1cb07752ab13e7de875b304b7f"
+    },
+    "accept_B_dst_sgpvvt2bbhnezsp5zgn": {
+      "status": "ACCEPTED",
+      "stage": "CHARGEBACK"
+    },
+    "accept_B_dst_sgpvczt9vhng0du698v": {
+      "status": "ACCEPTED",
+      "stage": "RFI"
+    }
+  },
+  "rejections": {
+    "A": {
+      "stage": "CHARGEBACK",
+      "status": "REQUIRES_RESPONSE"
     }
   }
 }
