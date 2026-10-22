@@ -67,7 +67,7 @@ def print_plan(items: list[dict]) -> None:
     print(f"  {'case':<5}{'amount':>10}  {'action':<10}{'who':<11}{'days':>6}  {'win':>5}  why")
     for it in items:
         d, row = it["decision"], it["row"]
-        who = "you" if d.needs_human else "auto"
+        who = ("URGENT you" if d.urgent else "you") if d.needs_human or d.action == "ESCALATE" else "auto"
         print(f"  {d.case:<5}{row['currency']} {float(row['amount']):>6,.0f}  {d.action:<10}"
               f"{who:<11}{d.days_left:>6}  {d.p_win:>5.0%}  {it['note']['explanation']}")
     needs_you = [it["decision"].case for it in items if it["decision"].needs_human]

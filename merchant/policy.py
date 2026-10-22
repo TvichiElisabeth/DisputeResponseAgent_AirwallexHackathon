@@ -11,6 +11,8 @@ MIN_CHALLENGE_PROB = 0.50    # don't fight weak cases: losses hurt our win rate
 REJECTION_FACTOR = 0.40      # issuer already said no once: win chance drops
 COMPELLING_MATCHES = 2       # Visa CE 3.0 style: 2+ prior undisputed orders, same device + IP
 MERCHANT_FAULT_CONTACTS = 2  # unanswered customer contacts that make it a human call
+MIN_DAYS_TO_CHALLENGE = 2    # less time than this: no time to prepare and submit evidence
+URGENT_DAYS = 3              # a person is needed and less time than this: flag URGENT
 
 ACCEPT, CHALLENGE, ESCALATE = "ACCEPT", "CHALLENGE", "ESCALATE"
 
@@ -47,6 +49,7 @@ class Decision:
     needs_human: bool
     days_left: float
     rule: str
+    urgent: bool = False
 
 
 def _parse_time(s: str) -> datetime:
@@ -93,23 +96,22 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None) -> Decisio
 
     # ---- economics ----
     p = win_probability(d.reason_type, f)
-
     if d.rejected_before:
         p = round(p * REJECTION_FACTOR, 2)
         extra_cost = ARBITRATION_FEE      # the first fee is already spent (sunk)
     else:
         extra_cost = DISPUTE_FEE
-    cost_accept = d.amount
+    cost_accept = d.amount              # assumes the fee is charged only when we defend
     cost_challenge = round(extra_cost + (1 - p) * d.amount, 2)
 
+    # Who must approve: computed once, before any rule
+    needs_human = d.amount > AUTO_APPROVE_LIMIT or d.rejected_before
 
     def out(action, needs_human, rule):
+        urgent = (needs_human or action == ESCALATE) and days_left < URGENT_DAYS
         return Decision(d.case, action, p, cost_accept, cost_challenge,
-                        needs_human, days_left, rule)
+                        needs_human, days_left, rule, urgent)
 
-
-    needs_human = d.amount > AUTO_APPROVE_LIMIT or d.rejected_before
-    
     # Rule 1: defending costs more than the dispute itself
     if not d.rejected_before and d.amount <= DISPUTE_FEE:
         return out(ACCEPT, needs_human,
@@ -122,9 +124,13 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None) -> Decisio
                    f"Customer contacted support {f.unanswered_contacts} times with no reply "
                    f"and no refund issued: a refund may be owed. A person decides.")
 
-    # Rule 3: expected cost, with a minimum win chance
-
-    if p >= MIN_CHALLENGE_PROB and cost_challenge < cost_accept:
+    # Rule 3: expected cost, with a minimum win chance and enough time to prepare
+    worth_challenging = p >= MIN_CHALLENGE_PROB and cost_challenge < cost_accept
+    if worth_challenging and days_left < MIN_DAYS_TO_CHALLENGE:
+        return out(ACCEPT, needs_human,
+                   f"Would challenge (win chance {p:.0%}), but only {days_left} days are "
+                   f"left: not enough time to prepare and submit evidence.")
+    if worth_challenging:
         return out(CHALLENGE, needs_human,
                    f"Win chance {p:.0%}: expected cost ${cost_challenge:,.2f} if we "
                    f"challenge vs ${cost_accept:,.2f} if we accept.")

@@ -25,5 +25,5 @@ class Case:
 CASES = [
     Case("A", "Fraud claim, strong evidence", 1240.00, "USD", "10.4", "RFI", 7, "ORD-A"),
     Case("B", "Not received, small amount",     18.00, "USD", "13.1", "RFI", 5, "ORD-B"),
-    Case("C", "Credit not processed",          340.00, "USD", "13.6", "CHARGEBACK", 10, "ORD-C"),
+    Case("C", "Credit not processed",          340.00, "USD", "13.6", "CHARGEBACK", 2, "ORD-C"),
 ]

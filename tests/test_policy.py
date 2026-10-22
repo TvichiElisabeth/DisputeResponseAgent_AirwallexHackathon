@@ -50,3 +50,16 @@ def test_guards_block_closed_or_late_disputes():
         decide(closed, A_FLAGS, NOW)
     with pytest.raises(ValueError):
         decide(late, A_FLAGS, NOW)
+
+def test_a_too_close_to_deadline_is_accepted_not_challenged():
+    tight = Dispute("A", 1240.0, "USD", "FRAUDULENT", "RFI", "REQUIRES_RESPONSE",
+                    "2026-10-22T18:00:00+0000")          # about 1.25 days after NOW
+    d = decide(tight, A_FLAGS, NOW)
+    assert d.action == ACCEPT and d.needs_human and d.urgent
+
+
+def test_escalation_near_deadline_is_urgent():
+    soon = Dispute("C", 340.0, "USD", "CREDIT_NOT_PROCESSED", "CHARGEBACK",
+                   "REQUIRES_RESPONSE", "2026-10-23T12:00:00+0000")   # 2 days after NOW
+    d = decide(soon, C_FLAGS, NOW)
+    assert d.action == ESCALATE and d.urgent
