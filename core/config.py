@@ -21,3 +21,6 @@ FILES_BASE = os.getenv("AWX_FILES_BASE", "https://files.sandbox.airwallex.com/ap
 # Safety rail: this project must never point at production.
 if "sandbox" not in API_BASE or "sandbox" not in FILES_BASE:
     raise RuntimeError("Refusing to run: API URLs must be sandbox URLs.")
+
+# Model used only to read evidence text
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
