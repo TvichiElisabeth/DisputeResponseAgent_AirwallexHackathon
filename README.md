@@ -133,10 +133,9 @@ python -m records.reset
 ```
 Then create and pay three USD payment links ($1,240 / $18 / $340) with test card `4035501000000008`, any future expiry and CVC. (We used the Airwallex developer MCP to create the links.)
 
-### 4. Run the demo
+### 4. Run the demo 
 ```bash
-python run_demo.py          # pauses between beats; approve with y/n
-python run_demo.py --yes    # rehearsal: auto-approve, no pauses
+python -m streamlit run app.py
 ```
 
 ### Tests
@@ -155,11 +154,10 @@ python -m pytest -v
 
 ## Tech stack
 
-Python 3.12 · requests · Anthropic SDK (Claude, typed tool use) · fpdf2 · pytest · python-dotenv · Airwallex Sandbox API
+Python 3.12 · Airwallex Sandbox API · Anthropic SDK (Claude, typed tool use) · requests · streamlit · fpdf2 · pytest · python-dotenv 
 
 ## What's next
 
-- A web view for the finance lead (queue, plan, approve/reject buttons)
 - Win-rate weights learned from the merchant's own dispute history
 - A "person overrides the agent" path: fight on to arbitration and receive the final ruling
 - Webhooks instead of polling for dispute status changes
