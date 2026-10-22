@@ -54,10 +54,12 @@ def request_approval(state: dict, dispute: dict, decision: Decision, action_deta
     approvals = state.setdefault("approvals", {})
     existing = approvals.get(_key(dispute, decision))
 
-    if existing and existing["terms_sha256"] == terms_hash:
-        return existing["approved"]               # same terms, already answered
-    if existing:
+    if existing and existing["terms_sha256"] == terms_hash and existing["approved"]:
+        return True                               # same terms, already approved
+    if existing and existing["terms_sha256"] != terms_hash:
         print("  ! Terms changed since the last approval. Asking again.")
+    elif existing:
+        print("  ! Previously not approved. Asking again.")
 
     print("\n  ┌─ APPROVAL NEEDED " + "─" * 44)
     print(f"  │ Case {terms['case']}  {terms['dispute_id']}  ({terms['stage']})")
@@ -69,7 +71,7 @@ def request_approval(state: dict, dispute: dict, decision: Decision, action_deta
     if evidence:
         print(f"  │ Evidence:     {terms['evidence_file']}  sha256 {terms['evidence_sha256'][:12]}…")
     print(f"  │ Why:          {decision.rule}")
-    if explanation:
+    if explanation and explanation != decision.rule:
         print(f"  │ Note:         {explanation}")
     print("  └" + "─" * 62)
 
