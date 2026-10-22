@@ -19,7 +19,7 @@ from merchant.policy import DISPUTE_FEE, ESCALATE, CHALLENGE
 from merchant.queue import read_queue
 from merchant.record_payments import record_payments
 from records import state as store
-from records.evidence_text import ORDERS
+from records.evidence_text import EVIDENCE, ORDERS
 
 
 NEW_INFO = (
@@ -376,7 +376,11 @@ with st.sidebar:
 # ---------------- Header and queue data ----------------
 
 st.title("Dispute Response Agent")
-st.caption("Built on the Airwallex sandbox · review chargebacks, approve responses, track outcomes.")
+st.caption(md(
+    f"Built on the Airwallex sandbox · Goal: clear the queue before the deadlines "
+    f"without spending more on fees (${DISPUTE_FEE:.0f} per defended dispute) "
+    f"than we recover."
+))
 
 st.divider()
 
@@ -550,6 +554,28 @@ for item in st.session_state.plan or []:
             f"{decision.days_left} days remaining · "
             f"Win chance {decision.p_win:.0%}"
         )
+
+        # Typed reason Airwallex records with the action, and the rule that fired.
+        if decision.action == CHALLENGE:
+            typed = agent.CHALLENGE_REASON[row["reason_type"]]
+        elif decision.action == "ACCEPT":
+            typed = agent.accept_reason(decision)
+        else:
+            typed = "no API action (handed to a person)"
+        left.caption(f"Airwallex reason: `{typed}` · Rule: {md(decision.rule)}")
+
+        # What the model extracted from the raw evidence, and the evidence itself.
+        f = item["flags"]
+        left.markdown(
+            f"**Facts read by the model:** "
+            f"{f.prior_undisputed_matches} matching earlier orders · "
+            f"signed delivery: {'yes' if f.signed_delivery else 'no'} · "
+            f"delivery scan: {'yes' if f.delivery_scanned else 'no'} · "
+            f"unanswered contacts: {f.unanswered_contacts} · "
+            f"refund issued: {'yes' if f.refund_issued else 'no'}"
+        )
+        with left.expander("Raw evidence the model read"):
+            st.code(EVIDENCE[decision.case], language=None)
 
         left.markdown(md(note["explanation"]))
 
