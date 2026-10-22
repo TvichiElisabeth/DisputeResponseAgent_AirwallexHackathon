@@ -61,3 +61,11 @@ ORDER_FACTS = {
         "seller_info": {"name": "Demo Shop", "store_url": "https://shop.example.com"},
     },
 }
+
+
+# Who bought what: shown on approvals (counterparty + purchase terms).
+ORDERS = {
+    "A": {"customer": "j.marin@example.com",   "order_id": "ORD-9902", "product": "Laptop"},
+    "B": {"customer": "b.ionescu@example.com", "order_id": "ORD-9921", "product": "Phone case"},
+    "C": {"customer": "a.popescu@example.com", "order_id": "ORD-9750", "product": "Headphones"},
+}
