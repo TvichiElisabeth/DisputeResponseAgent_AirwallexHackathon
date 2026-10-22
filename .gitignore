@@ -6,3 +6,4 @@ out/records/state.json
 state.json
 records/state.json
 .pytest_cache/
+records/archive/

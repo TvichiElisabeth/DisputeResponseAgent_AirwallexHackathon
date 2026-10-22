@@ -36,7 +36,9 @@ TOOL = {
 SYSTEM = (
     "You explain chargeback decisions that were already made by the merchant's rules. "
     "Never recommend a different action and never invent facts or numbers: use only "
-    "what you are given. Plain language, no jargon."
+    "what you are given. Plain language, no jargon. If you are told the previous "
+    "decision and it differs from the current one, say clearly that the decision changed "
+    "and what caused it."
 )
 
 
@@ -62,5 +64,5 @@ def explain(decision: Decision, facts: EvidenceFlags, evidence_summary: str,
         return {"explanation": decision.rule, "what_to_check": []}
     return {
         "explanation": str(data["explanation"]).strip()[:600],
-        "what_to_check": [str(x)[:200] for x in data.get("what_to_check", [])][:3],
+        "what_to_check": [str(x)[:300] for x in data.get("what_to_check", [])][:3],
     }

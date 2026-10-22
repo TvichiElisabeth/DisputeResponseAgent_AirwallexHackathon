@@ -1,29 +1,27 @@
 {
   "request_ids": {
-    "pi_create_A": "2abcb3e8-d761-4bde-91c7-b5ab35df4ef6",
-    "pi_confirm_A": "8767d2ca-26d3-433f-8ec7-42325330583a",
-    "challenge_A_dst_sgpvczt9vhnezsopcom_RFI": "d6122ac8-5068-4e33-9b16-c8ffc056f9a9",
-    "accept_B_dst_sgpvvt2bbhnezsp5zgn": "699c4a7f-2449-4dbc-90d0-29d50203d94b",
-    "accept_B_dst_sgpvczt9vhng0du698v": "7b32aa0c-1d3b-4e2c-adcc-51954f91ea81"
+    "accept_B_dst_sgpvczt9vhng90tlplt": "c8b0b7dd-50ce-46a1-b469-ce4ddec38e32",
+    "challenge_A_dst_sgpvczt9vhng90t8iao_RFI": "2d0a1817-765f-4cdf-aa3f-ee754c1e043d",
+    "accept_A_dst_sgpvczt9vhng90t8iao": "ac5abc43-e530-4844-bdcc-ed56f77235ce"
   },
   "payments": {
     "A": {
-      "id": "int_sgpvm8gfjhney642zoy",
+      "id": "int_sgpvf2z9fhng8ysnpv5",
       "amount": 1240.0,
       "currency": "USD",
       "status": "SUCCEEDED",
       "source": "payment_link"
     },
-    "C": {
-      "id": "int_sgpvm8gfjhneybv1l5q",
-      "amount": 340.0,
+    "B": {
+      "id": "int_sgpvf2z9fhng8ys9dno",
+      "amount": 18.0,
       "currency": "USD",
       "status": "SUCCEEDED",
       "source": "payment_link"
     },
-    "B": {
-      "id": "int_sgpvm8gfjhng092vth7",
-      "amount": 18.0,
+    "C": {
+      "id": "int_sgpvm8gfjhng8yvl8jt",
+      "amount": 340.0,
       "currency": "USD",
       "status": "SUCCEEDED",
       "source": "payment_link"
@@ -31,56 +29,149 @@
   },
   "disputes": {
     "A": {
-      "id": "dst_sgpvczt9vhnezsopcom",
-      "payment_intent_id": "int_sgpvm8gfjhney642zoy",
+      "id": "dst_sgpvczt9vhng90t8iao",
+      "payment_intent_id": "int_sgpvf2z9fhng8ysnpv5",
       "stage": "CHARGEBACK",
       "status": "REQUIRES_RESPONSE",
-      "due_at": "2026-10-28T13:40:26+00:00"
-    },
-    "C": {
-      "id": "dst_sgpvvt2bbhnezspqa68",
-      "payment_intent_id": "int_sgpvm8gfjhneybv1l5q",
-      "stage": "CHARGEBACK",
-      "status": "REQUIRES_RESPONSE",
-      "due_at": "2026-10-31T10:50:12+00:00"
+      "due_at": "2026-10-29T14:14:29+00:00"
     },
     "B": {
-      "id": "dst_sgpvczt9vhng0du698v",
-      "payment_intent_id": "int_sgpvm8gfjhng092vth7",
+      "id": "dst_sgpvczt9vhng90tlplt",
+      "payment_intent_id": "int_sgpvf2z9fhng8ys9dno",
       "stage": "RFI",
+      "status": "ACCEPTED",
+      "due_at": "2026-10-27T14:10:58+00:00"
+    },
+    "C": {
+      "id": "dst_sgpvczt9vhng90ty883",
+      "payment_intent_id": "int_sgpvm8gfjhng8yvl8jt",
+      "stage": "CHARGEBACK",
       "status": "REQUIRES_RESPONSE",
-      "due_at": "2026-10-27T08:57:33+00:00"
+      "due_at": "2026-10-24T14:10:58+00:00"
     }
   },
-  "abandoned_payments": [
-    {
-      "id": "int_sgpvf2z9fhnexzog5vk",
-      "merchant_order_id": "ORD-A-1792575879",
-      "amount": 1240.0,
-      "currency": "USD",
-      "status": "REQUIRES_PAYMENT_METHOD"
-    }
-  ],
-  "evidence_files": {
+  "evidence_reads": {
     "A": {
-      "file_id": "Yjc1N2Y5ZjUtZDQ1YS00NTIyLTgwNGYtOWNmY2VlZjMwYzg3LHwsc2csfCxBX2NvbXBlbGxpbmdfZXZpZGVuY2UucGRmXzE3OTI1ODgzNjIyNzY",
-      "sha256": "e7ce3c8cf1a8c84ebbd46b56681045771a22fc1cb07752ab13e7de875b304b7f",
-      "filename": "A_compelling_evidence.pdf"
+      "sha256": "1ef3bfeceeaada3c2a4cd8e500191b97ef5963d0d2b39ce65b261088752e4ee3",
+      "flags": {
+        "prior_undisputed_matches": 3,
+        "signed_delivery": true,
+        "delivery_scanned": true,
+        "unanswered_contacts": 0,
+        "refund_issued": false
+      },
+      "summary": "The disputed order ORD-9902 ($1,240.00, 14 Oct 2026) used the same device fingerprint (fp_8c21e9) and IP address (82.77.14.203) as three earlier orders (ORD-7781, ORD-8112, ORD-8840). None of those three were disputed or refunded. DHL shows the order was delivered on 14 Oct at 19:47, signed by \"J. MARIN\", with a signature image on file. A different earlier order, ORD-9013, used a different device and IP and was refunded. The evidence doesn't show a refund on the disputed order. It also doesn't mention any customer messages to the merchant.",
+      "model": "claude-sonnet-5-5"
+    },
+    "B": {
+      "sha256": "066c0bf6b78b2c722d527c680c705d905d027ecfe0bff6bf518e7b1167368620",
+      "flags": {
+        "prior_undisputed_matches": 0,
+        "signed_delivery": false,
+        "delivery_scanned": true,
+        "unanswered_contacts": 0,
+        "refund_issued": false
+      },
+      "summary": "The carrier (Posta) record for ORD-9921 (phone case, $18.00) shows the parcel was accepted at the depot on 16 Oct and delivered on 17 Oct at 13:40, left at the front door. No signature was required for this service, and no delivery photo is on file. The evidence contains nothing on earlier matching orders (device fingerprint or IP), customer contacts, or refunds.",
+      "model": "claude-sonnet-5-5"
+    },
+    "C": {
+      "sha256": "5c719049cd252d036329f4dfdad6e474b8a0eef9cbbcb4d0eaf59ab44dced698",
+      "flags": {
+        "prior_undisputed_matches": 0,
+        "signed_delivery": false,
+        "delivery_scanned": false,
+        "unanswered_contacts": 2,
+        "refund_issued": false
+      },
+      "summary": "The customer says they returned the headphones (ORD-9750, $340.00) on 02 Oct using the merchant's return label. They emailed again on 09 Oct to ask about the refund. Support sent no replies to either message. The returns system shows a label generated 01 Oct but no warehouse receipt, and no refund has been issued. The evidence has no outbound delivery scan, no signature, no carrier tracking for the return, and no device or IP match history.",
+      "model": "claude-sonnet-5-5"
+    }
+  },
+  "human_queue": {
+    "C": {
+      "dispute_id": "dst_sgpvczt9vhng90ty883",
+      "amount": 340.0,
+      "currency": "USD",
+      "counterparty": "a.popescu@example.com",
+      "order_id": "ORD-9750",
+      "due_at": "2026-10-24T14:10:58+00:00",
+      "reason": "Customer contacted support 2 times with no reply and no refund issued: a refund may be owed. A person decides.",
+      "explanation": "The rules sent this to a person because the customer wrote to support twice about a return of the $340.00 headphones and got no reply, and no refund has been issued. A refund may be owed, and the evidence is thin: there is no delivery scan, no signature, and no return tracking. The chance of winning a challenge is only 10%, and the expected cost of challenging ($331.00) is close to the $340.00 cost of accepting, so the money does not clearly favor either path. The deadline is 2 days away.",
+      "what_to_check": [
+        "Whether the returned headphones (ORD-9750) arrived at the warehouse but were not logged, since the label was generated 01 Oct and the customer says they shipped 02 Oct but there is no receipt on recor",
+        "Whether the customer can provide return tracking or proof of shipment for the 02 Oct return.",
+        "That both unanswered customer emails (including the 09 Oct follow-up about the refund) are confirmed in the support inbox, and that no refund was issued through another channel."
+      ],
+      "status": "WAITING_FOR_PERSON",
+      "at": "2026-10-22T14:11:34+00:00"
     }
   },
   "actions": {
-    "challenge_A_dst_sgpvczt9vhnezsopcom_RFI": {
-      "status": "CHALLENGED",
-      "stage": "RFI",
-      "evidence_sha256": "e7ce3c8cf1a8c84ebbd46b56681045771a22fc1cb07752ab13e7de875b304b7f"
-    },
-    "accept_B_dst_sgpvvt2bbhnezsp5zgn": {
-      "status": "ACCEPTED",
-      "stage": "CHARGEBACK"
-    },
-    "accept_B_dst_sgpvczt9vhng0du698v": {
+    "accept_B_dst_sgpvczt9vhng90tlplt": {
       "status": "ACCEPTED",
       "stage": "RFI"
+    },
+    "challenge_A_dst_sgpvczt9vhng90t8iao_RFI": {
+      "status": "CHALLENGED",
+      "stage": "RFI",
+      "evidence_sha256": "e9803d2e3efd68ea3233f72cfd6b7ca7ea2c6a7f750e00b4161b44d34995726b"
+    },
+    "accept_A_dst_sgpvczt9vhng90t8iao": {
+      "status": "ACCEPTED",
+      "stage": "CHARGEBACK"
+    }
+  },
+  "evidence_files": {
+    "A": {
+      "file_id": "Yjc1N2Y5ZjUtZDQ1YS00NTIyLTgwNGYtOWNmY2VlZjMwYzg3LHwsc2csfCxBX2NvbXBlbGxpbmdfZXZpZGVuY2UucGRmXzE3OTI2NzgyOTYyMzA",
+      "sha256": "e9803d2e3efd68ea3233f72cfd6b7ca7ea2c6a7f750e00b4161b44d34995726b",
+      "filename": "A_compelling_evidence.pdf",
+      "dispute_id": "dst_sgpvczt9vhng90t8iao"
+    }
+  },
+  "approvals": {
+    "A_dst_sgpvczt9vhng90t8iao_RFI_CHALLENGE": {
+      "approved": true,
+      "approved_by": "finance-ops-lead",
+      "at": "2026-10-22T14:14:10+00:00",
+      "terms": {
+        "case": "A",
+        "dispute_id": "dst_sgpvczt9vhng90t8iao",
+        "stage": "RFI",
+        "action": "CHALLENGE",
+        "action_detail": "PURCHASE_HISTORY",
+        "amount": 1240.0,
+        "currency": "USD",
+        "counterparty": "j.marin@example.com",
+        "order_id": "ORD-9902",
+        "product": "Laptop",
+        "reason_code": "10.4",
+        "evidence_file": "A_compelling_evidence.pdf",
+        "evidence_sha256": "e9803d2e3efd68ea3233f72cfd6b7ca7ea2c6a7f750e00b4161b44d34995726b"
+      },
+      "terms_sha256": "10c7aaf741cdf523f36591b8dd537a1de5addb9e442c6e7850758e708b9a826e"
+    },
+    "A_dst_sgpvczt9vhng90t8iao_CHARGEBACK_ACCEPT": {
+      "approved": true,
+      "approved_by": "finance-ops-lead",
+      "at": "2026-10-22T14:15:15+00:00",
+      "terms": {
+        "case": "A",
+        "dispute_id": "dst_sgpvczt9vhng90t8iao",
+        "stage": "CHARGEBACK",
+        "action": "ACCEPT",
+        "action_detail": "OTHERS",
+        "amount": 1240.0,
+        "currency": "USD",
+        "counterparty": "j.marin@example.com",
+        "order_id": "ORD-9902",
+        "product": "Laptop",
+        "reason_code": "10.4",
+        "evidence_file": null,
+        "evidence_sha256": null
+      },
+      "terms_sha256": "dc352a100d2fda5729aeddeafa7c301a9c732b168b18a41319306a8f639cedac"
     }
   },
   "rejections": {

@@ -31,3 +31,19 @@ def request_id_for(state: dict, operation: str) -> str:
         ids[operation] = new_request_id()
         save(state)
     return ids[operation]
+
+ARCHIVE_DIR = STATE_PATH.parent / "archive"
+
+
+def used_payment_ids() -> set[str]:
+    """Every payment intent used in earlier runs (from archived state files)."""
+    ids: set[str] = set()
+    if not ARCHIVE_DIR.exists():
+        return ids
+    for f in ARCHIVE_DIR.glob("state-*.json"):
+        data = json.loads(f.read_text(encoding="utf-8"))
+        ids |= {p["id"] for p in data.get("payments", {}).values()}
+        ids |= {d["payment_intent_id"] for d in data.get("disputes", {}).values()
+                if "payment_intent_id" in d}
+        ids |= {p["id"] for p in data.get("abandoned_payments", [])}
+    return ids
