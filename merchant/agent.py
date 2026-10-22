@@ -113,10 +113,8 @@ def act(client, state, it: dict, ask) -> None:
         actions.accept(client, state, row, detail, d.rule, approver, refund_reason)
 
 
-def run(new_information: str | None = None, ask=input) -> list[dict]:
-    client = AirwallexClient()
-    state = st.load()
-
+def plan(client, state, new_information: str | None = None) -> list[dict]:
+    """Think only: facts, decision and explanation for every open case. Changes nothing."""
     items = []
     for row in open_cases(client, state):
         row["payment_intent_id"] = state["disputes"][row["case"]]["payment_intent_id"]
@@ -128,16 +126,21 @@ def run(new_information: str | None = None, ask=input) -> list[dict]:
         if row["case"] in state.get("rejections", {}):
             challenged = any(op.startswith(f"challenge_{row['case']}_")
                              for op in state.get("actions", {}))
-            info = (new_information or "The issuing bank rejected our evidence.")
+            info = new_information or "The issuing bank rejected our evidence."
             if challenged:
                 info += " Our previous decision on this case was CHALLENGE."
         note = explain(decision, flags, summary, new_information=info)
         items.append({"row": row, "flags": flags, "decision": decision, "note": note})
+    return items
 
+
+def run(new_information: str | None = None, ask=input) -> list[dict]:
+    client = AirwallexClient()
+    state = st.load()
+    items = plan(client, state, new_information)
     if not items:
         print("No open disputes need a response.")
         return items
-
     print_plan(items)
     for it in items:
         act(client, state, it, ask)
