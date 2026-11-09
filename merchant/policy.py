@@ -2,6 +2,7 @@
 Same dispute + same evidence flags -> same decision, every time."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Literal
 
 # ---- Demo economics (synthetic, configure per merchant) ----
 DISPUTE_FEE = 25.00          # paid when we defend, win or lose (sandbox doesn't charge it)
@@ -15,6 +16,9 @@ MIN_DAYS_TO_CHALLENGE = 2    # less time than this: no time to prepare and submi
 URGENT_DAYS = 3              # a person is needed and less time than this: flag URGENT
 
 ACCEPT, CHALLENGE, ESCALATE = "ACCEPT", "CHALLENGE", "ESCALATE"
+
+# Airwallex dispute stages this module reasons about
+DisputeStage = Literal["RFI", "CHARGEBACK", "PRE_ARBITRATION", "ARBITRATION"]
 
 
 @dataclass(frozen=True)
@@ -61,6 +65,11 @@ def _parse_time(s: str) -> datetime:
     if len(s) >= 5 and s[-5] in "+-" and s[-3] != ":":
         s = s[:-2] + ":" + s[-2:]
     return datetime.fromisoformat(s)
+
+
+def merchant_at_fault(f: EvidenceFlags) -> bool:
+    """Rule 2's test: the customer kept asking, nobody answered, and no refund went out."""
+    return f.unanswered_contacts >= MERCHANT_FAULT_CONTACTS and not f.refund_issued
 
 
 def win_probability(reason_type: str, f: EvidenceFlags) -> float:
@@ -130,7 +139,7 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None,
                    f"more than the dispute, even if we win.")
 
     # Rule 2: the merchant may be at fault, so a person decides
-    if f.unanswered_contacts >= MERCHANT_FAULT_CONTACTS and not f.refund_issued:
+    if merchant_at_fault(f):
         return out(ESCALATE, True,
                    f"Customer contacted support {f.unanswered_contacts} times with no reply "
                    f"and no refund issued: a refund may be owed. A person decides.",
@@ -151,3 +160,38 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None,
     return out(ACCEPT, needs_human,
                f"Win chance {p:.0%}: challenging is expected to cost "
                f"${cost_challenge:,.2f} vs ${cost_accept:,.2f} to accept.")
+
+# ---- Resolving a "merchant may be at fault" escalation (rule 2) ----
+
+@dataclass(frozen=True)
+class ResolutionPlan:
+    """What the agent proposes to the person. Decided here, in code; the model
+    only writes the customer reply around it."""
+    action: str                     # ACCEPT
+    accept_reason: str              # Airwallex accept enum
+    should_refund: bool             # attach a refund to the accept?
+    refund_amount: float            # 0.0 when no refund
+    refund_reason: str | None       # Airwallex refund enum, when refunding
+    explanation: str                # plain-language reason, shown on the card
+
+
+def resolution_for(dispute: Dispute, stage: DisputeStage) -> ResolutionPlan:
+    """dispute: the escalated case. stage: its LIVE stage, re-read from Airwallex
+    right before proposing or acting (it may have moved since the escalation).
+
+    The stage decides the refund: at RFI the money hasn't moved, so the refund is
+    how the customer is paid back. At CHARGEBACK the bank has already returned the
+    money, so a refund on top would pay the customer twice."""
+    amount = f"{dispute.currency} {dispute.amount:,.2f}"
+    if stage == "RFI":
+        return ResolutionPlan(
+            ACCEPT, "VALID_CUSTOMER_DISPUTE", True, dispute.amount, "REQUESTED_BY_CUSTOMER",
+            f"Accept and refund {amount}: at RFI the money hasn't moved yet, so the refund "
+            f"is how the customer gets it back.")
+    if stage == "CHARGEBACK":
+        return ResolutionPlan(
+            ACCEPT, "VALID_CUSTOMER_DISPUTE", False, 0.0, None,
+            f"Accept, with no separate refund: at chargeback the bank already returned "
+            f"{amount} to the customer. Refunding again would pay them twice.")
+    raise ValueError(f"[{dispute.case}] no automatic resolution at stage {stage}; "
+                     f"a person handles it directly.")

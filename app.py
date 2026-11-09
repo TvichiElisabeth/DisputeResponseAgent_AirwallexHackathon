@@ -7,6 +7,7 @@ Only the presentation has changed.
 """
 import contextlib
 import io
+from datetime import datetime, timezone
 
 import streamlit as st
 
@@ -15,7 +16,9 @@ from bank.sandbox import AirwallexSandboxSimulator
 from bank.seed import open_disputes
 from core.client import AirwallexClient
 from merchant import agent, refunds
-from merchant.policy import DISPUTE_FEE, ESCALATE, CHALLENGE, MIN_CHALLENGE_PROB
+from merchant.drafter import check_draft
+from merchant.policy import (DISPUTE_FEE, ESCALATE, CHALLENGE, MIN_CHALLENGE_PROB,
+                             URGENT_DAYS, _parse_time)
 from merchant.queue import read_queue
 from merchant.record_payments import record_payments
 from records import state as store
@@ -739,31 +742,151 @@ for item in st.session_state.plan or []:
 
 # ---------------- Cases requiring human attention ----------------
 
+resolved_esc = state.get("resolved_escalations", {})
+
 if waiting:
     st.subheader("Requires attention")
 
     st.caption(
-        "These cases are waiting for additional information or "
-        "human review."
+        "These cases are waiting for a person. Where the agent could prepare "
+        "a resolution, it is ready to review and approve."
     )
 
     for case, item in waiting.items():
+        esc_key = f"esc-{case}"
+        days = round((_parse_time(item["due_at"]) - datetime.now(timezone.utc))
+                     .total_seconds() / 86400, 1)
+
         with st.container(border=True):
             st.markdown(
                 f"#### Case {case} · "
                 f"{item['currency']} {item['amount']:,.2f}"
+                + (" · :red[**URGENT**]" if days < URGENT_DAYS else "")
             )
 
             st.caption(
                 f"{item['counterparty']} · "
                 f"Order {item['order_id']} · "
-                f"Due {item['due_at'][:10]}"
+                f"Due {item['due_at'][:10]} ({days} days left)"
             )
 
+            st.markdown(f"**Why a person:** {md(item['reason'])}")
             st.markdown(md(item["explanation"]))
 
-            for check in item["what_to_check"]:
-                st.markdown(f"- {md(check)}")
+            pkg = item.get("package")
+
+            # No package (older run, or an escalation the agent can't resolve): checklist only.
+            if not pkg:
+                for check in item["what_to_check"]:
+                    st.markdown(f"- {md(check)}")
+
+                if st.button("Prepare resolution package", key=f"prep-{case}"):
+                    try:
+                        if capture(agent.prepare_package, client, store.load(), case) is None:
+                            st.session_state.outcome[esc_key] = (
+                                "No package for this case: a person decides it directly."
+                            )
+                    except Exception as e:
+                        st.session_state.outcome[esc_key] = f"Not completed: {e}"
+                    st.rerun()
+
+                if msg := st.session_state.outcome.get(esc_key):
+                    st.warning(msg)
+                continue
+
+            # 1. What the code proposes
+            plan_ = pkg["resolution"]
+            refund_txt = (
+                f"Refund {item['currency']} {plan_['refund_amount']:,.2f}"
+                if plan_["should_refund"] else "No separate refund"
+            )
+            st.markdown("**Proposed resolution** (decided by code)")
+            st.info(md(
+                f"**{plan_['action']}** · `{plan_['accept_reason']}` · {refund_txt}\n\n"
+                f"{plan_['explanation']}"
+            ))
+
+            # 2. The evidence behind it
+            with st.expander("Evidence that a refund is owed"):
+                st.code(EVIDENCE[case], language=None, wrap_lines=True)
+
+            # 3. What the person must confirm
+            st.markdown("**Check before approving**")
+            ticked = [
+                st.checkbox(md(check), key=f"chk-{case}-{i}")
+                for i, check in enumerate(item["what_to_check"])
+            ]
+
+            # 4. The reply, editable; code re-checks every edit
+            draft = pkg["draft"]
+            st.markdown("**Reply to the customer** (edit if needed)")
+            st.caption(
+                "Drafted by the model and checked by code."
+                if draft["source"] == "model" else
+                "Template reply: the model's draft didn't pass the checks ("
+                + md("; ".join(draft["problems"])) + ")."
+            )
+            subject = st.text_input("Subject", value=draft["subject"], key=f"subj-{case}")
+            body = st.text_area("Message", value=draft["body"], height=230,
+                                key=f"body-{case}")
+
+            problems = check_draft(subject, body, item["amount"], pkg["stage"])
+            for problem in problems:
+                st.warning(md(problem))
+
+            ready = all(ticked) and not problems
+            if not all(ticked):
+                st.caption("Tick every check to enable approval.")
+
+            approve_col, keep_col, _ = st.columns([2, 2, 3])
+
+            if approve_col.button(
+                "Approve and accept dispute",
+                key=f"res-{case}",
+                type="primary",
+                disabled=not ready,
+            ):
+                try:
+                    capture(agent.resolve_escalation, client, store.load(), case,
+                            subject, body, ask=lambda _: "y")
+                    st.session_state.outcome.pop(esc_key, None)
+                except Exception as e:  # show the reason, keep the page usable
+                    st.session_state.outcome[esc_key] = f"Not completed: {e}"
+                st.rerun()
+
+            # Safe no-op: leaves the case and the state exactly as they are.
+            if keep_col.button("Keep investigating", key=f"keep-{case}"):
+                st.toast(f"Case {case} stays in the queue. Nothing was changed.")
+
+            if msg := st.session_state.outcome.get(esc_key):
+                st.error(md(msg))
+
+
+# ---------------- Escalations a person resolved ----------------
+
+if resolved_esc:
+    st.subheader("Resolved by a person")
+
+    for case, item in resolved_esc.items():
+        plan_ = item["resolution"]
+        reply = item["reply"]
+        with st.container(border=True):
+            st.markdown(
+                f"#### Case {case} · {item['currency']} {item['amount']:,.2f} · "
+                f":green[**RESOLVED**]"
+            )
+            st.caption(
+                f"Accepted (`{plan_['accept_reason']}`) by {item['resolved_by']} · "
+                f"{item['resolved_at'][:16].replace('T', ' ')} UTC · "
+                + ("refund requested" if plan_["should_refund"] else
+                   "no separate refund: the bank already returned the money")
+            )
+            st.markdown(
+                "**Reply to the customer:** ready to send, not sent automatically. "
+                "Use the copy button on the box below."
+            )
+            st.code(f"Subject: {reply['subject']}\n\n{reply['body']}",
+                    language=None, wrap_lines=True)
 
 
 # ---------------- Dispute outcomes ----------------
@@ -793,6 +916,10 @@ for row in rows:
     elif back:
         outcome = f"Refunded ${back:,.2f}"
         refunded += back
+
+    elif row["case"] in resolved_esc:
+        outcome = "Accepted: customer was right (no separate refund)"
+        conceded += float(row["amount"])
 
     elif row["status"] == "ACCEPTED":
         outcome = "Conceded"

@@ -4,6 +4,7 @@ from itertools import product
 import pytest
 
 from merchant.policy import (ACCEPT, CHALLENGE, ESCALATE, MIN_CHALLENGE_PROB, Dispute,
+                             merchant_at_fault, resolution_for,
                              EvidenceFlags, decide)
 
 NOW = datetime(2026, 10, 21, 12, 0, tzinfo=timezone.utc)
@@ -122,3 +123,27 @@ def test_the_bar_always_agrees_with_the_decision():
         assert (d.action == CHALLENGE) == clears, (reason, amount, flags, rejected, d)
         checked += 1
     assert checked > 1000
+
+# ---- Resolution package for "merchant may be at fault" escalations ----
+
+def test_c_at_chargeback_is_accepted_without_a_second_refund():
+    plan = resolution_for(C, "CHARGEBACK")
+    assert plan.action == ACCEPT and plan.accept_reason == "VALID_CUSTOMER_DISPUTE"
+    assert not plan.should_refund and plan.refund_amount == 0 and plan.refund_reason is None
+
+
+def test_same_case_at_rfi_is_accepted_with_a_refund():
+    plan = resolution_for(C, "RFI")
+    assert plan.should_refund and plan.refund_amount == 340.0
+    assert plan.refund_reason == "REQUESTED_BY_CUSTOMER"
+
+
+def test_no_automatic_resolution_at_later_stages():
+    with pytest.raises(ValueError):
+        resolution_for(C, "PRE_ARBITRATION")
+
+
+def test_merchant_at_fault_matches_rule_2():
+    assert merchant_at_fault(C_FLAGS)
+    assert not merchant_at_fault(EvidenceFlags(unanswered_contacts=2, refund_issued=True))
+    assert not merchant_at_fault(EvidenceFlags(unanswered_contacts=1))

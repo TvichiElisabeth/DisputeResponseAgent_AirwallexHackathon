@@ -17,11 +17,17 @@ from records import state as st
 from records.evidence_text import ORDERS
 
 
+def normalize_reply(text: str) -> str:
+    """Same text, same hash: ignore line-ending style and leading/trailing whitespace
+    (web text areas add them), but nothing else."""
+    return text.replace("\r\n", "\n").strip()
+
+
 def _terms(dispute: dict, decision: Decision, action_detail: str,
-           evidence: dict | None) -> dict:
+           evidence: dict | None, reply_text: str | None = None) -> dict:
     """Everything the approver sees. Any change here voids the approval."""
     order = ORDERS[dispute["case"]]
-    return {
+    terms = {
         "case": dispute["case"],
         "dispute_id": dispute["id"],
         "stage": dispute["stage"],
@@ -36,6 +42,12 @@ def _terms(dispute: dict, decision: Decision, action_detail: str,
         "evidence_file": evidence["filename"] if evidence else None,
         "evidence_sha256": evidence["sha256"] if evidence else None,
     }
+    # Only when there is a reply (escalation packages): every other approval keeps
+    # exactly the hash it had before this field existed.
+    if reply_text is not None:
+        terms["reply_sha256"] = hashlib.sha256(
+            normalize_reply(reply_text).encode()).hexdigest()
+    return terms
 
 
 def _hash(terms: dict) -> str:
@@ -48,8 +60,9 @@ def _key(dispute: dict, decision: Decision) -> str:
 
 def request_approval(state: dict, dispute: dict, decision: Decision, action_detail: str,
                      evidence: dict | None = None, explanation: str = "",
-                     approver: str = "finance-ops-lead", ask=input, save=st.save) -> bool:
-    terms = _terms(dispute, decision, action_detail, evidence)
+                     approver: str = "finance-ops-lead", ask=input, save=st.save,
+                     reply_text: str | None = None) -> bool:
+    terms = _terms(dispute, decision, action_detail, evidence, reply_text)
     terms_hash = _hash(terms)
     approvals = state.setdefault("approvals", {})
     existing = approvals.get(_key(dispute, decision))
@@ -70,6 +83,8 @@ def request_approval(state: dict, dispute: dict, decision: Decision, action_deta
     print(f"  │ Reason code:  Visa {terms['reason_code']}")
     if evidence:
         print(f"  │ Evidence:     {terms['evidence_file']}  sha256 {terms['evidence_sha256'][:12]}…")
+    if reply_text is not None:
+        print(f"  │ Reply:        sha256 {terms['reply_sha256'][:12]}… (customer message)")
     print(f"  │ Why:          {decision.rule}")
     if explanation and explanation != decision.rule:
         print(f"  │ Note:         {explanation}")
@@ -89,12 +104,13 @@ def request_approval(state: dict, dispute: dict, decision: Decision, action_deta
 
 
 def verify_approval(state: dict, dispute: dict, decision: Decision, action_detail: str,
-                    evidence: dict | None = None) -> str:
+                    evidence: dict | None = None, reply_text: str | None = None) -> str:
     """Call right before acting. Returns who approved, or raises PermissionError."""
     record = state.get("approvals", {}).get(_key(dispute, decision))
     if not record or not record["approved"]:
         raise PermissionError(f"[{dispute['case']}] no approval on record; not acting.")
-    if record["terms_sha256"] != _hash(_terms(dispute, decision, action_detail, evidence)):
+    if record["terms_sha256"] != _hash(_terms(dispute, decision, action_detail, evidence,
+                                              reply_text)):
         raise PermissionError(f"[{dispute['case']}] terms changed after approval; not acting.")
     return record["approved_by"]
 
