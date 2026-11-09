@@ -9,7 +9,10 @@ Covers two parts of the brief:
 import anthropic
 
 from core import config
-from merchant.policy import Decision, EvidenceFlags
+import math
+
+from merchant.policy import (ARBITRATION_FEE, DISPUTE_FEE, MIN_CHALLENGE_PROB, Decision,
+                             EvidenceFlags)
 from merchant.llm import call_tool
 
 TOOL = {
@@ -42,6 +45,34 @@ SYSTEM = (
 )
 
 
+def _bar_line(decision: Decision) -> str:
+    """The break-even numbers, as plain facts the model may cite."""
+    be, req = decision.break_even_p, decision.required_p
+    if be is None:
+        line = "Break-even: not applicable (no amount at risk)."
+    elif be >= 1:
+        line = (f"Break-even win chance: {be:.0%}, i.e. above 100%: the fee is more than "
+                f"the amount, so no win chance makes challenging pay.")
+    else:
+        line = (f"Win chance needed to challenge: {req:.0%} (the higher of the cost "
+                f"break-even {be:.0%} and the {MIN_CHALLENGE_PROB:.0%} policy minimum).")
+    if not decision.money_decided:
+        line += " The money comparison did NOT decide this case; the rule above did."
+    return line
+
+
+def _rejection_line(decision: Decision) -> str:
+    """After the bank rejects our evidence: how the fee that counts raised the bar.
+    Empty unless this decision was priced with the arbitration fee."""
+    amount, be = decision.cost_if_accept, decision.break_even_p
+    if amount <= 0 or be is None or not math.isclose(be, ARBITRATION_FEE / amount):
+        return ""
+    return (f"Before the rejection, challenging cost the ${DISPUTE_FEE:.0f} dispute fee, so "
+            f"the break-even was {DISPUTE_FEE / amount:.0%}. Fighting on now costs the "
+            f"${ARBITRATION_FEE:.0f} arbitration fee (the ${DISPUTE_FEE:.0f} is already spent), "
+            f"so the break-even rose to {be:.0%}.")
+
+
 def explain(decision: Decision, facts: EvidenceFlags, evidence_summary: str,
             new_information: str | None = None) -> dict:
     prompt = (
@@ -50,12 +81,15 @@ def explain(decision: Decision, facts: EvidenceFlags, evidence_summary: str,
         f"Rule that fired: {decision.rule}\n"
         f"Win chance: {decision.p_win:.0%} | cost if accept: ${decision.cost_if_accept:,.2f} | "
         f"expected cost if challenge: ${decision.expected_cost_if_challenge:,.2f}\n"
+        f"{_bar_line(decision)}\n"
         f"Needs a person: {decision.needs_human} | days to deadline: {decision.days_left}\n"
         f"Facts: {facts}\n"
         f"Evidence summary: {evidence_summary}\n"
     )
     if new_information:
         prompt += f"New information since the last decision: {new_information}\n"
+        if line := _rejection_line(decision):
+            prompt += f"{line}\n"
 
     try:
         data = call_tool(SYSTEM, TOOL, prompt, max_tokens=600)

@@ -50,6 +50,10 @@ class Decision:
     days_left: float
     rule: str
     urgent: bool = False
+    # Break-even line (display only; the rules above already decided):
+    break_even_p: float | None = None   # win chance where challenging costs the same as accepting
+    required_p: float | None = None     # the bar to clear: higher of break-even and MIN_CHALLENGE_PROB
+    money_decided: bool = True          # False when another rule (merchant fault, deadline) decided
 
 
 def _parse_time(s: str) -> datetime:
@@ -105,13 +109,19 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None,
     cost_accept = d.amount              # assumes the fee is charged only when we defend
     cost_challenge = round(extra_cost + (1 - p) * d.amount, 2)
 
+    # Break-even: extra_cost + (1 - p) * amount < amount  <=>  p > extra_cost / amount.
+    # Above 1.0 means no win chance can make challenging pay (the fee exceeds the amount).
+    break_even = extra_cost / d.amount if d.amount > 0 else None
+    required = max(break_even, MIN_CHALLENGE_PROB) if break_even is not None else None
+
     # Who must approve: computed once, before any rule
     needs_human = d.amount > AUTO_APPROVE_LIMIT or d.rejected_before
 
-    def out(action, needs_human, rule):
+    def out(action, needs_human, rule, money_decided=True):
         urgent = (needs_human or action == ESCALATE) and days_left < URGENT_DAYS
         return Decision(d.case, action, p, cost_accept, cost_challenge,
-                        needs_human, days_left, rule, urgent)
+                        needs_human, days_left, rule, urgent,
+                        break_even, required, money_decided)
 
     # Rule 1: defending costs more than the dispute itself
     if not d.rejected_before and d.amount <= DISPUTE_FEE:
@@ -123,7 +133,8 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None,
     if f.unanswered_contacts >= MERCHANT_FAULT_CONTACTS and not f.refund_issued:
         return out(ESCALATE, True,
                    f"Customer contacted support {f.unanswered_contacts} times with no reply "
-                   f"and no refund issued: a refund may be owed. A person decides.")
+                   f"and no refund issued: a refund may be owed. A person decides.",
+                   money_decided=False)
 
     # Rule 3: expected cost, with a minimum win chance and enough time to prepare
     worth_challenging = p >= MIN_CHALLENGE_PROB and cost_challenge < cost_accept
@@ -131,7 +142,8 @@ def decide(d: Dispute, f: EvidenceFlags, now: datetime | None = None,
         return out(ESCALATE, True,
                    f"Worth challenging (win chance {p:.0%}), but only {days_left} days are "
                    f"left and the evidence isn't prepared. A person decides now: rush the "
-                   f"evidence or concede.")
+                   f"evidence or concede.",
+                   money_decided=False)
     if worth_challenging:
         return out(CHALLENGE, needs_human,
                    f"Win chance {p:.0%}: expected cost ${cost_challenge:,.2f} if we "

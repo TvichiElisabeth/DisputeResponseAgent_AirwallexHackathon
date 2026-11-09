@@ -15,7 +15,7 @@ from bank.sandbox import AirwallexSandboxSimulator
 from bank.seed import open_disputes
 from core.client import AirwallexClient
 from merchant import agent, refunds
-from merchant.policy import DISPUTE_FEE, ESCALATE, CHALLENGE
+from merchant.policy import DISPUTE_FEE, ESCALATE, CHALLENGE, MIN_CHALLENGE_PROB
 from merchant.queue import read_queue
 from merchant.record_payments import record_payments
 from records import state as store
@@ -305,6 +305,61 @@ def md(text: str) -> str:
     """Show $ amounts literally; Streamlit would otherwise read $...$ as maths."""
     return text.replace("$", r"\$")
 
+def break_even_bar(d) -> str:
+    """Our win chance against the bar it must clear. Every number comes from
+    policy.decide(); this only draws it. Greyed out when another rule decided."""
+    be, req, p = d.break_even_p, d.required_p, d.p_win
+    if be is None:
+        return ""
+
+    def pos(x: float) -> float:          # position on a 0-100% track
+        return round(max(0.0, min(x, 1.0)) * 100, 2)
+
+    active = d.money_decided
+    ink = "#172B4D" if active else "#94A3B8"
+    clears = p >= MIN_CHALLENGE_PROB and p > be          # same test as policy rule 3
+    dot = ("#2563EB" if clears else "#EA580C") if active else "#94A3B8"
+    zone = "#DBEAFE" if active else "#F1F5F9"
+
+    if be >= 1:
+        headline = (f"Can't break even: the fee is more than the amount at risk "
+                    f"(break-even {be:.0%}). Our win chance: {p:.0%}.")
+    else:
+        verdict = "clears the bar" if clears else "below the bar"
+        headline = f"Need {req:.0%}, have {p:.0%}: {verdict}."
+    if not active:
+        headline = ("Not the deciding factor: a person decides this case for the reason "
+                    f"above. For reference: need {req:.0%}, have {p:.0%}.")
+
+    parts = [
+        f'<div style="margin:8px 0 12px;max-width:560px;opacity:{1 if active else 0.85};">',
+        f'<div style="font-size:0.85rem;font-weight:600;color:{ink};margin-bottom:8px;">'
+        f'{headline}</div>',
+        '<div style="position:relative;height:10px;background:#E2E8F0;border-radius:5px;">',
+    ]
+    if be < 1:   # the "worth challenging" zone, from the bar to 100%
+        parts.append(f'<div style="position:absolute;left:{pos(req)}%;right:0;top:0;bottom:0;'
+                     f'background:{zone};border-radius:0 5px 5px 0;"></div>')
+        parts.append(f'<div title="Cost break-even" style="position:absolute;left:{pos(be)}%;'
+                     f'top:-4px;bottom:-4px;border-left:2px dashed {ink};"></div>')
+    parts.append(f'<div title="Policy minimum" style="position:absolute;'
+                 f'left:{pos(MIN_CHALLENGE_PROB)}%;top:-4px;bottom:-4px;'
+                 f'border-left:2px solid {ink};"></div>')
+    parts.append(f'<div title="Our win chance" style="position:absolute;left:calc({pos(p)}% - 7px);'
+                 f'top:-2px;width:14px;height:14px;border-radius:50%;background:{dot};'
+                 f'border:2px solid #FFFFFF;box-shadow:0 0 0 1px {dot};"></div>')
+    parts.append('</div>')
+    be_label = f"{be:.0%}" if be < 1 else f"{be:.0%} (off the scale)"
+    parts.append(
+        f'<div style="font-size:0.75rem;color:#64748B;margin-top:8px;">'
+        f'<span style="color:{ink};">&#9482;</span> cost break-even {be_label} &nbsp;·&nbsp; '
+        f'<span style="color:{ink};">&#9475;</span> policy minimum {MIN_CHALLENGE_PROB:.0%} &nbsp;·&nbsp; '
+        f'<span style="color:{dot};">&#9679;</span> our win chance {p:.0%}</div>'
+    )
+    parts.append('</div>')
+    return "".join(parts)
+
+
 def item_key(it: dict) -> str:
     return (
         f"{it['decision'].case}-"
@@ -563,6 +618,10 @@ for item in st.session_state.plan or []:
         else:
             typed = "no API action (handed to a person)"
         left.caption(f"Airwallex reason: `{typed}` · Rule: {md(decision.rule)}")
+
+        # Break-even line: our win chance vs. the bar it has to clear.
+        if bar := break_even_bar(decision):
+            left.markdown(bar, unsafe_allow_html=True)
 
         # What the model extracted from the raw evidence, and the evidence itself.
         f = item["flags"]

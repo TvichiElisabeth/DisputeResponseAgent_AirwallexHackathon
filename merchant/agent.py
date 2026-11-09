@@ -62,14 +62,23 @@ def evidence_for(client, state, row, flags) -> dict:
     return record
 
 
+def need_text(d) -> str:
+    """Win chance needed to challenge, for the plan table ('-' when money didn't decide)."""
+    if d.required_p is None or not d.money_decided:
+        return "-"
+    return ">100%" if d.required_p > 1 else f"{d.required_p:.0%}"
+
+
 def print_plan(items: list[dict]) -> None:
     print("\nPLAN (soonest deadline first)")
-    print(f"  {'case':<5}{'amount':>10}  {'action':<10}{'who':<11}{'days':>6}  {'win':>5}  why")
+    print(f"  {'case':<5}{'amount':>10}  {'action':<10}{'who':<11}{'days':>6}  {'win':>5}"
+          f"  {'need':>6}  why")
     for it in items:
         d, row = it["decision"], it["row"]
         who = ("URGENT you" if d.urgent else "you") if d.needs_human or d.action == "ESCALATE" else "auto"
         print(f"  {d.case:<5}{row['currency']} {float(row['amount']):>6,.0f}  {d.action:<10}"
-              f"{who:<11}{d.days_left:>6}  {d.p_win:>5.0%}  {it['note']['explanation']}")
+              f"{who:<11}{d.days_left:>6}  {d.p_win:>5.0%}  {need_text(d):>6}"
+              f"  {it['note']['explanation']}")
     needs_you = [it["decision"].case for it in items if it["decision"].needs_human]
     print(f"\n  Approvals or decisions needed from you: {', '.join(needs_you) or 'none'}")
 
