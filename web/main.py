@@ -7,6 +7,7 @@ Every action returns the whole main section re-rendered, so the numbers,
 the queue, the cards and the outcomes never disagree after a click.
 """
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -21,13 +22,36 @@ app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 
 
+FILTERS = {"all", "needs", "auto"}
+
+
+def _view(path: str, query: str = "") -> dict:
+    """Which screen to draw: the queue (with a sidebar filter) or one case.
+    Presentation only: every screen renders from the same service.page()."""
+    parts = [s for s in path.split("/") if s]
+    if len(parts) == 2 and parts[0] == "cases" and parts[1].isalnum():
+        return {"screen": "case", "case": parts[1].upper(), "filter": "all"}
+    f = parse_qs(query).get("view", ["all"])[0]
+    return {"screen": "queue", "case": None, "filter": f if f in FILTERS else "all"}
+
+
 def _main(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "partials/_main.html", {"p": service.page()})
+    """After an action, re-draw the screen the person clicked from (HTMX sends its URL)."""
+    current = urlsplit(request.headers.get("HX-Current-URL", "/"))
+    return templates.TemplateResponse(request, "partials/_main.html",
+                                      {"p": service.page(), "v": _view(current.path, current.query)})
 
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"p": service.page()})
+    return templates.TemplateResponse(request, "index.html",
+                                      {"p": service.page(), "v": _view("/", request.url.query)})
+
+
+@app.get("/cases/{case}", response_class=HTMLResponse)
+def case_page(request: Request, case: str):
+    return templates.TemplateResponse(request, "index.html",
+                                      {"p": service.page(), "v": _view(f"/cases/{case}")})
 
 
 @app.get("/health")

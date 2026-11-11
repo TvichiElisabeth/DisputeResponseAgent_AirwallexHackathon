@@ -6,37 +6,19 @@
   <title>Dispute Desk</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/app.css">
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-3 7a3.5 3.5 0 0 0 6 0z"/><path d="M19 7l-3 7a3.5 3.5 0 0 0 6 0z"/><path d="M8 21h8"/></svg>
-        </span>
-        <span class="brand-name">Dispute Desk</span>
-        <span class="env"><span class="env-dot"></span>Airwallex sandbox</span>
-      </div>
-      <button type="button" class="btn btn-ghost-dark" data-drawer-toggle aria-controls="drawer" aria-expanded="false">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
-        <span>Demo controls</span>
-      </button>
-    </div>
-  </header>
-
   {% block content %}{% endblock %}
 
   <!-- Shown while a review runs: the agent's steps, one after another. -->
   <div id="review-overlay" class="overlay" hidden>
     <div class="overlay-card" role="status" aria-live="polite">
       <div class="overlay-head">
-        <div>
-          <div class="overlay-title">Agent is reviewing the queue</div>
-          <div class="overlay-sub">Code decides the money. The model reads and explains.</div>
-        </div>
+        <div class="overlay-title">Agent is reviewing the queue</div>
+        <div class="overlay-sub">Code decides the money. The model reads and explains.</div>
       </div>
       <ol class="steps" id="review-steps"></ol>
     </div>
@@ -45,16 +27,68 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script>
-    // ---- Demo controls drawer (the drawer lives in #main; its open state lives on <body>) ----
-    function setDrawer(open) {
-      document.body.classList.toggle("drawer-open", open);
-      document.querySelectorAll("[data-drawer-toggle]").forEach(b => b.setAttribute("aria-expanded", open));
+    // ---- Side sheets (demo controls, details, raw text). They live in #main, so
+    //      they start closed after every swap; only one is open at a time. ----
+    let lastOpener = null;
+    function closeSheets() {
+      document.querySelectorAll(".sheet.open").forEach(s => s.classList.remove("open"));
+      document.querySelectorAll("[data-sheet]").forEach(b => b.setAttribute("aria-expanded", "false"));
+      document.body.classList.remove("sheet-open");
+      if (lastOpener && document.body.contains(lastOpener)) lastOpener.focus();
+    }
+    function openSheet(id, opener) {
+      closeSheets();
+      const s = document.getElementById(id);
+      if (!s) return;
+      lastOpener = opener;
+      s.classList.add("open");
+      opener?.setAttribute("aria-expanded", "true");
+      document.body.classList.add("sheet-open");
+      s.querySelector("[data-sheet-close]")?.focus();
     }
     document.addEventListener("click", (e) => {
-      if (e.target.closest("[data-drawer-toggle]")) setDrawer(!document.body.classList.contains("drawer-open"));
-      if (e.target.closest("[data-drawer-close]")) setDrawer(false);
+      const opener = e.target.closest("[data-sheet]");
+      if (opener) { openSheet(opener.dataset.sheet, opener); return; }
+      if (e.target.closest("[data-sheet-close]") || e.target.classList.contains("scrim")) closeSheets();
     });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") setDrawer(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheets(); });
+    document.addEventListener("htmx:afterSwap", () => document.body.classList.remove("sheet-open"));
+
+    // ---- Tabs: inactive panels are hidden, never removed, so the escalation
+    //      form still submits every checkbox and the reply. ----
+    document.addEventListener("click", (e) => {
+      const tab = e.target.closest("[role=tab]");
+      if (!tab) return;
+      const list = tab.closest("[role=tablist]");
+      list.querySelectorAll("[role=tab]").forEach(t => {
+        const on = t === tab;
+        t.setAttribute("aria-selected", on);
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+      });
+    });
+
+    // ---- Queue: whole row opens the case; search and deadline filter in the browser ----
+    document.addEventListener("click", (e) => {
+      const row = e.target.closest("tr[data-href]");
+      if (row && !e.target.closest("a, button")) location.href = row.dataset.href;
+    });
+    function filterQueue() {
+      const q = (document.getElementById("q")?.value || "").trim().toLowerCase();
+      const due = document.getElementById("due")?.value || "any";
+      let shown = 0;
+      document.querySelectorAll("#queue-body tr").forEach(tr => {
+        const days = parseFloat(tr.dataset.days);
+        const okDue = due === "any" || (!isNaN(days) && days > 0 && days <= parseFloat(due));
+        const okText = !q || tr.dataset.search.includes(q);
+        tr.hidden = !(okDue && okText);
+        if (!tr.hidden) shown++;
+      });
+      const empty = document.getElementById("queue-empty");
+      if (empty) empty.hidden = shown > 0;
+    }
+    document.addEventListener("input", (e) => { if (e.target.matches("#q, #due")) filterQueue(); });
+    document.addEventListener("htmx:afterSwap", filterQueue);
 
     // ---- Copy the reply to the clipboard ----
     document.addEventListener("click", (e) => {
@@ -69,7 +103,7 @@
       });
     });
 
-    // ---- Review progress: plays the agent's steps while the request runs ----
+    // ---- Review progress: lists the agent's steps while the request runs ----
     let stepTimer = null;
     function startReview() {
       const main = document.getElementById("main");
@@ -105,13 +139,6 @@
       if (lastPath === "/review") startReview();
     });
     document.addEventListener("htmx:afterRequest", () => { if (lastPath === "/review") stopReview(); });
-    document.addEventListener("htmx:afterSwap", () => {
-      const main = document.getElementById("main");
-      if (!main) return;
-      if (lastPath === "/review") main.classList.add("just-reviewed");
-      const m = lastPath.match(/^\/(cases|escalations)\/(\w+)\/(approve|reject|resolve)/);
-      if (m) document.getElementById("case-" + m[2])?.classList.add("just-decided");
-    });
 
     // ---- Show server or network errors instead of failing silently ----
     function toast(msg) {

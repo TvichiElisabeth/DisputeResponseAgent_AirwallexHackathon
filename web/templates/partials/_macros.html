@@ -11,101 +11,145 @@
 </button>
 {% endmacro %}
 
-{% macro badge(text, tone) %}<span class="badge badge-{{ tone }}">{{ text }}</span>{% endmacro %}
+{# A status label: a small half-capsule mark plus text. kind: challenge | accept | needs | done | none #}
+{% macro pill(text, kind) %}<span class="pill pill-{{ kind }}"><i class="mark" aria-hidden="true"></i>{{ text }}</span>{% endmacro %}
 
 {% macro case_chip(letter) %}<span class="case-chip">{{ letter }}</span>{% endmacro %}
 
-{% macro deadline_chip(dl, open=True) %}
-  {% if not open %}<span class="muted">-</span>
-  {% else %}<span class="due {% if dl.passed %}due-passed{% elif dl.urgent %}due-urgent{% endif %}" title="Due {{ dl.date }}">{{ dl.label }}</span>{% endif %}
+{% set REASONS = {"FRAUDULENT": "Fraud, card not present", "PRODUCT_NOT_RECEIVED": "Item not received",
+                  "CREDIT_NOT_PROCESSED": "Refund not received"} %}
+{% macro reason(reason_type, code, stacked=False) -%}
+  {%- set label = REASONS.get(reason_type) or (reason_type | replace("_", " ") | lower | capitalize) -%}
+  {%- if stacked -%}<span class="cell-main">{{ label }}</span>{% if code %}<span class="cell-sub">Visa {{ code }}</span>{% endif %}
+  {%- else -%}{{ label }}{% if code %} <span class="muted">Visa {{ code }}</span>{% endif %}{%- endif -%}
+{%- endmacro %}
+
+{# Time left as a number, with a thin bar out of 7 days. Red under the urgent threshold. #}
+{% macro deadline(dl, open=True) %}
+  {% if not open %}<span class="muted">Closed</span>
+  {% elif dl.passed %}<span class="due due-urgent"><span class="due-num">Passed</span></span>
+  {% else %}
+    {% set n = dl.label.split(" ")[0] %}
+    <span class="due {% if dl.urgent %}due-urgent{% endif %}" title="Due {{ dl.date }}">
+      <span class="due-line"><span class="due-num">{{ n }}</span><span class="due-unit">left</span></span>
+      <span class="track" aria-hidden="true"><i style="width: {{ ([dl.days / 7, 1] | min * 100) | round(0) }}%"></i></span>
+    </span>
+  {% endif %}
 {% endmacro %}
+
+{% macro icon(name, size=20) -%}
+<svg viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == "person" %}<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>
+{%- elif name == "list" %}<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>
+{%- elif name == "check" %}<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>
+{%- elif name == "rules" %}<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
+{%- elif name == "gear" %}<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>
+{%- elif name == "search" %}<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+{%- elif name == "lock" %}<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+{%- elif name == "back" %}<path d="M15 18l-6-6 6-6"/>
+{%- elif name == "close" %}<path d="M6 6l12 12M18 6L6 18"/>
+{%- elif name == "chevron" %}<path d="M6 9l6 6 6-6"/>
+{%- elif name == "shield" %}<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>
+{%- elif name == "sliders" %}<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
+{%- endif %}</svg>
+{%- endmacro %}
 
 {% macro verdict_icon(action) %}
-{% if action == "CHALLENGE" %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-{% elif action == "ACCEPT" %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>
-{% else %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>
-{% endif %}
+{% if action == "CHALLENGE" %}{{ icon("shield", 24) }}{% elif action == "ACCEPT" %}{{ icon("check", 24) }}{% else %}{{ icon("person", 24) }}{% endif %}
 {% endmacro %}
 
-{% macro bar(b) %}
-<div class="meter {% if not b.active %}meter-off{% endif %} meter-{{ b.tone }}">
-  <div class="meter-track" role="img"
-       aria-label="Cost break-even {{ b.be_label }}, policy minimum {{ b.min_label }}, our win chance {{ b.p_label }}">
-    {% if b.on_scale %}
-      <div class="meter-zone" style="left: {{ b.zone_left }}%"><span>worth fighting</span></div>
-      <div class="meter-tick meter-tick-be" style="left: {{ b.be_left }}%" title="Cost break-even"></div>
-    {% endif %}
-    <div class="meter-tick meter-tick-min" style="left: {{ b.min_left }}%" title="Policy minimum"></div>
-    <div class="meter-dot" style="left: {{ b.dot_left }}%" title="Our win chance">
-      <span class="meter-dot-label">{{ b.p_label }}</span>
+{# The dispute desk mark: two D's on one stem, the claim in outline, the response solid. #}
+{% macro logo(size=32) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 32 32" aria-hidden="true" class="logo-mark"><rect width="32" height="32" rx="7" fill="#1a1a1a"/><rect x="15.25" y="8" width="1.5" height="16" fill="#f8f8f7"/><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="#f8f8f7"/><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="#f8f8f7" stroke-width="1.5"/></svg>
+{%- endmacro %}
+
+{# A side sheet: Details, Raw text, Demo controls. Opened by any [data-sheet="id"] button. #}
+{% macro sheet_open(id, title) %}
+<div class="sheet" id="{{ id }}" role="dialog" aria-modal="true" aria-labelledby="{{ id }}-title">
+  <div class="scrim"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2 id="{{ id }}-title">{{ title }}</h2>
+      <button type="button" class="icon-btn" data-sheet-close aria-label="Close {{ title | lower }}">{{ icon("close") }}</button>
     </div>
-  </div>
-  <div class="meter-scale" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
-  <p class="meter-head">{{ b.headline }}</p>
-  <div class="meter-legend">
-    <span><i class="lg lg-be"></i>Break-even {{ b.be_label }}</span>
-    <span><i class="lg lg-min"></i>Policy minimum {{ b.min_label }}</span>
-    <span><i class="lg lg-dot"></i>Our win chance {{ b.p_label }}</span>
+{% endmacro %}
+{% macro sheet_close() %}
   </div>
 </div>
 {% endmacro %}
 
-{% macro costs(c) %}
-{% set a = c.cost_accept | replace(",", "") | float %}
-{% set ch = c.cost_challenge | replace(",", "") | float %}
-{% set top = [a, ch, 1] | max %}
-<div class="costs">
-  <div class="cost {% if c.cheaper == 'accept' %}cost-win{% endif %}">
-    <div class="cost-row"><span>If we accept</span><strong>USD {{ c.cost_accept }}</strong></div>
-    <div class="cost-bar"><i style="width: {{ (a / top * 100) | round(1) }}%"></i></div>
-  </div>
-  <div class="cost {% if c.cheaper == 'challenge' %}cost-win{% endif %}">
-    <div class="cost-row"><span>If we challenge <em>(expected)</em></span><strong>USD {{ c.cost_challenge }}</strong></div>
-    <div class="cost-bar"><i style="width: {{ (ch / top * 100) | round(1) }}%"></i></div>
-  </div>
-</div>
-{% endmacro %}
+{# Evidence source kinds. The app's events say "system", "carrier", "customer" or "missing";
+   "system" is split by who wrote it, so order history and returns get their own pictogram. #}
+{% set SOURCES = {"bank": "Bank", "order": "Order history", "returns": "Returns system", "carrier": "Carrier",
+                  "customer": "Customer", "support": "Your support", "agent": "Dispute Desk agent"} %}
+{% macro source_kind(n) -%}
+  {%- if n.kind == "system" -%}{{ "returns" if "return" in (n.who | lower) else "order" }}
+  {%- elif n.kind == "missing" -%}support
+  {%- else -%}{{ n.kind }}{%- endif -%}
+{%- endmacro %}
 
-{# The evidence as a connected thread: the bank's claim at the top, evidence as replies. #}
-{% macro thread(nodes, raw=None, raw_id="") %}
-<div class="thread-wrap">
-  <div class="thread-title">
-    <span class="eyebrow">Evidence the agent read</span>
-    {% if raw %}<details class="raw"><summary>Raw text</summary><pre>{{ raw }}</pre></details>{% endif %}
+{# The source pictogram: shape says who (person, bank, system, agent), the glyph says which. #}
+{% macro source_icon(kind, missing=False) -%}
+<span class="node node-{{ kind }}{% if missing %} node-missing{% endif %}" aria-hidden="true">
+{%- if kind == "agent" -%}
+<svg viewBox="6 6 20 20"><rect x="15.25" y="8" width="1.5" height="16" fill="currentColor"/><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="currentColor"/><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+{%- else -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+{%- if kind == "customer" %}<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>
+{%- elif kind == "support" %}<path d="M4 5h16v11H10l-6 4z"/><path d="M8 9.5h8M8 12.5h5"/>
+{%- elif kind == "bank" %}<path d="M3 9l9-5 9 5"/><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20h18"/>
+{%- elif kind == "returns" %}<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>
+{%- elif kind == "order" %}<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>
+{%- elif kind == "carrier" %}<path d="M2.5 6.5h11v9.5h-11z"/><path d="M13.5 10h4l3.5 3.5V16h-7.5"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>
+{%- endif %}</svg>
+{%- endif -%}
+</span>
+{%- endmacro %}
+
+{% set CLAIMS = {"FRAUDULENT": "The cardholder says they did not make this purchase.",
+                 "PRODUCT_NOT_RECEIVED": "The cardholder says the item never arrived.",
+                 "CREDIT_NOT_PROCESSED": "The cardholder says they are owed a refund that was never issued."} %}
+
+{# The evidence as a timeline: the bank's claim first, evidence next, the agent's reading last. #}
+{% macro thread(nodes, raw_sheet=None, stage="", reason_type="") %}
+{% set counts = namespace(order=[], seen={}) %}
+{% for n in nodes %}{% set k = source_kind(n) %}{% if k != "agent" %}
+  {% if k not in counts.seen %}{% set _ = counts.order.append(k) %}{% set _ = counts.seen.update({k: 0}) %}{% endif %}
+  {% set _ = counts.seen.update({k: counts.seen[k] + 1}) %}
+{% endif %}{% endfor %}
+<section class="card timeline" aria-labelledby="ev-title">
+  <div class="card-head">
+    <h2 id="ev-title">Evidence the agent read</h2>
+    {% if raw_sheet %}<button type="button" class="btn btn-text" data-sheet="{{ raw_sheet }}" aria-expanded="false">Raw text</button>{% endif %}
   </div>
-  {% set root = nodes[0] %}
-  <div class="thread">
-    <div class="t-node t-root">
-      <span class="avatar avatar-{{ root.kind }}">{{ root.initial }}</span>
-      <div class="t-body">
-        <div class="t-head"><strong>{{ root.who }}</strong><span class="t-when">{{ root.when }}</span></div>
-        <p>{{ root.text }}</p>
-      </div>
-    </div>
-    <ol class="t-replies">
-      {% for n in nodes[1:] %}
-      <li class="t-node t-reply t-{{ n.kind }}">
-        <span class="avatar avatar-{{ n.kind }}">{% if n.kind == "missing" %}?{% else %}{{ n.initial }}{% endif %}</span>
-        <div class="t-body">
-          <div class="t-head">
-            <strong>{{ n.who }}</strong>
-            {% if n.when %}<span class="t-when">{{ n.when }}</span>{% endif %}
-            {% if n.weight == "for" %}<span class="w w-for">Helps us</span>
-            {% elif n.weight == "against" %}<span class="w w-against">Hurts us</span>{% endif %}
-          </div>
-          {% if n.facts %}
-            <ul class="t-facts">
-              {% for label, value in n.facts %}
-                <li class="{% if value in ('no', '0') %}f-off{% endif %}"><span>{{ label }}</span><b>{{ value }}</b></li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p>{{ n.text }}</p>
-          {% endif %}
+  <ul class="sources" aria-label="Evidence sources">
+    {% for k in counts.order %}<li>{{ source_icon(k) }}<span>{{ SOURCES[k] }}</span><span class="muted">{{ counts.seen[k] }}</span></li>{% endfor %}
+  </ul>
+  <ol class="tl">
+    {% for n in nodes %}
+    {% set k = source_kind(n) %}
+    <li class="tl-item">
+      {{ source_icon(k, missing=(n.kind == "missing")) }}
+      <div class="tl-body">
+        <div class="tl-head">
+          <strong>{{ "Cardholder’s bank (Visa)" if k == "bank" else n.who }}</strong>
+          {% set label = "" if SOURCES[k] == n.who else SOURCES[k] %}
+          <span class="muted small">{{ label }}{% if label and (k == "bank" or n.when) %} · {% endif %}{% if k == "bank" %}Opened the dispute{% if stage %} at {{ stage if stage == "RFI" else stage | replace("_", " ") | lower }}{% endif %}{% elif n.when %}{{ n.when }}{% endif %}</span>
+          {% if n.weight == "for" %}<span class="tag tag-for"><i class="mark" aria-hidden="true"></i>Helps us</span>
+          {% elif n.weight == "against" %}<span class="tag tag-against"><i class="mark" aria-hidden="true"></i>Hurts us</span>{% endif %}
         </div>
-      </li>
-      {% endfor %}
-    </ol>
-  </div>
-</div>
+        {% if k == "bank" %}
+          <p>{{ CLAIMS.get(reason_type, "The cardholder disputes this payment.") }}</p>
+        {% elif n.facts %}
+          <dl class="facts">
+            {% for label, value in n.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+          </dl>
+        {% else %}
+          <p>{{ n.text }}</p>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
 {% endmacro %}

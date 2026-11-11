@@ -1,12 +1,17 @@
 {% import "partials/_macros.html" as ui %}
-{% if g.problems %}
-  <ul class="problems" role="alert">
-    {% for pr in g.problems %}<li>{{ pr }}</li>{% endfor %}
-  </ul>
-{% endif %}
-{% if not g.all_ticked %}<p class="muted small">Tick every check to enable approval.</p>{% endif %}
-<div class="btn-row">
+<div class="bar-msg">
+  {% if g.problems %}
+    <ul class="problems" role="alert">
+      {% for pr in g.problems %}<li><i class="mark" aria-hidden="true"></i>{{ pr }}</li>{% endfor %}
+    </ul>
+  {% elif not g.all_ticked %}
+    <span class="muted">Tick every check to enable approval</span>
+  {% else %}
+    <span>Ready for your approval</span>
+  {% endif %}
+</div>
+<div class="bar-actions">
+  {{ ui.action_button("/escalations/" ~ g.case ~ "/keep", "Keep investigating", "secondary") }}
   {{ ui.action_button("/escalations/" ~ g.case ~ "/resolve", "Approve and accept dispute", "primary",
                       disabled=not g.ready, include="#esc-" ~ g.case) }}
-  {{ ui.action_button("/escalations/" ~ g.case ~ "/keep", "Keep investigating", "secondary") }}
 </div>
