@@ -1,8 +1,11 @@
 """The dispute agent.
 
-For every open dispute (soonest deadline first):
-  queue (Airwallex) -> reader (model: facts) -> policy (code: decision)
-  -> explainer (model: why) -> PLAN printed for the finance lead
+One review:
+  agent loop (model + typed tools, merchant/agent_loop.py): reads the queue and the
+  evidence, records facts backed by exact quotes (checked in code), runs the policy,
+  proposes a plan
+  -> per case: policy (code) decides on the verified facts; a disagreement with the
+     agent only adds a person's approval -> explainer (model: why)
   -> act: approval if needed -> REST call, or escalate to a person.
 
 Run it again after new information (e.g. the bank rejects our evidence):
@@ -13,11 +16,11 @@ from dataclasses import asdict, replace
 from datetime import datetime, timezone
 
 from core.client import AirwallexClient
-from merchant import actions, drafter, evidence_files, refunds
+from merchant import actions, agent_loop, drafter, evidence_files, refunds, tools
 from merchant.approvals import escalate, request_approval, verify_approval
 from merchant.explainer import explain
-from merchant.policy import (ACCEPT, CHALLENGE, DISPUTE_FEE, ESCALATE, Dispute, decide,
-                             merchant_at_fault, resolution_for)
+from merchant.policy import (ACCEPT, CHALLENGE, DISPUTE_FEE, ESCALATE, URGENT_DAYS, Dispute,
+                             decide, merchant_at_fault, resolution_for)
 from merchant.queue import read_queue
 from merchant.reader import read_evidence
 from records import state as st
@@ -224,25 +227,83 @@ def resolve_escalation(client, state, case: str, subject: str, body: str,
     return resolved[case]
 
 
-def plan(client, state, new_information: str | None = None) -> list[dict]:
+def plan(client, state, new_information: str | None = None, llm=None) -> list[dict]:
     """Think only: facts, decision and explanation for every open case. Changes nothing."""
-    items = []
-    for row in open_cases(client, state):
+    return plan_with_run(client, state, new_information, llm)[0]
+
+
+def plan_with_run(client, state, new_information: str | None = None,
+                  llm=None) -> tuple[list[dict], dict]:
+    """The agent investigates the queue through typed tools and proposes a plan;
+    code decides each case. Returns (items, run_info).
+
+    Per case, the decision always comes from policy.decide() on verified facts.
+    The agent's proposal can only add scrutiny: if it disagrees with the policy,
+    or the agent didn't finish, the case needs a person's approval. Cases the agent
+    recorded no facts for fall back to the fixed reader, so a failed run behaves
+    like the deterministic pipeline did before."""
+    rows = open_cases(client, state)
+    for row in rows:
         row["payment_intent_id"] = state["disputes"][row["case"]]["payment_intent_id"]
-        flags, summary = read_evidence(state, row["case"], row["reason_type"])
-        prepared = state.get("evidence_files", {}).get(row["case"], {})
+
+    # Callers pass the rejection notice on every review; the agent only hears it when
+    # an open case really was rejected (otherwise it would be told something untrue).
+    rejected = any(r["case"] in state.get("rejections", {}) for r in rows)
+    run = agent_loop.run_agent(client, state, rows, new_information if rejected else None, llm=llm)
+    proposals = {it["case"]: it for it in (run.ctx.plan or {}).get("items", [])}
+    print(f"Agent: {run.stop} after {run.steps} model turn(s), "
+          f"{sum(1 for t in run.trace if t['kind'] == 'tool')} tool call(s)")
+
+    items = []
+    for row in rows:
+        case = row["case"]
+        recorded = run.ctx.facts.get(case)
+        if recorded:
+            flags = tools.flags_for(run.ctx, case)
+            quotes = [q for f in recorded.values() for q in f["quotes"]]
+            summary = "Verified quotes: " + " | ".join(quotes) if quotes else "No positive facts verified."
+            source = "agent"
+        else:
+            flags, summary = read_evidence(state, case, row["reason_type"])
+            source = "reader (fallback)"
+
+        prepared = state.get("evidence_files", {}).get(case, {})
         decision = decide(to_dispute(row, state), flags,
                           evidence_ready=prepared.get("dispute_id") == row["id"])
+
+        proposal = proposals.get(case)
+        disagrees = bool(proposal) and proposal["action"] != decision.action
+        if disagrees or not run.finished:               # the model can only raise scrutiny
+            decision = replace(decision, needs_human=True,
+                               urgent=decision.days_left < URGENT_DAYS)
+
         info = None
-        if row["case"] in state.get("rejections", {}):
-            challenged = any(op.startswith(f"challenge_{row['case']}_")
-                             for op in state.get("actions", {}))
+        if case in state.get("rejections", {}):
+            challenged = any(op.startswith(f"challenge_{case}_") for op in state.get("actions", {}))
             info = new_information or "The issuing bank rejected our evidence."
             if challenged:
                 info += " Our previous decision on this case was CHALLENGE."
+        if proposal:
+            summary += f"\nThe agent's reading: {proposal['reason']}"
+        if disagrees:
+            info = (info + " " if info else "") + (
+                f"The agent proposed {proposal['action']} but the policy says {decision.action}; "
+                f"the policy applies and a person must approve.")
         note = explain(decision, flags, summary, new_information=info)
+        note["agent"] = {
+            "source": source, "proposed": proposal["action"] if proposal else None,
+            "reason": proposal["reason"] if proposal else None, "disagrees": disagrees,
+            "finished": run.finished,
+            "quotes": {f: v["quotes"] for f, v in (recorded or {}).items() if v["quotes"]},
+        }
+        note["trace"] = [t for t in run.trace if t.get("case") == case]
         items.append({"row": row, "flags": flags, "decision": decision, "note": note})
-    return items
+
+    run_info = {"finished": run.finished, "stop": run.stop, "steps": run.steps,
+                "summary": (run.ctx.plan or {}).get("summary", ""),
+                "disagreements": (run.ctx.plan or {}).get("disagreements", []),
+                "trace": run.trace}
+    return items, run_info
 
 
 def run(new_information: str | None = None, ask=input) -> list[dict]:

@@ -162,7 +162,7 @@ def review() -> None:
     with LOCK:
         c = client()
         try:
-            items = run_logged("Review", agent.plan, c, st.load(), NEW_INFO)
+            items, run_info = run_logged("Review", agent.plan_with_run, c, st.load(), NEW_INFO)
         except ActionError as e:
             _notice(f"Review failed: {e}", "error")
             return
@@ -182,7 +182,7 @@ def review() -> None:
                 outcomes[key] = {"text": f"Not completed: {e}", "kind": "error"}
 
         def store(w):
-            w["review"] = {"at": _now(), "items": [_serialize(it) for it in items]}
+            w["review"] = {"at": _now(), "items": [_serialize(it) for it in items], "agent": run_info}
             w["outcomes"] = outcomes
         _update_web(store)
         if not items:
@@ -405,6 +405,7 @@ def page() -> dict:
                         "at_stake": f"{sum(float(r['amount']) for r in open_rows):,.2f}",
                         "waiting": len(waiting), "fees": f"{fees:,.2f}"},
             "queue": queue, "cards": cards, "review_at": web.get("review", {}).get("at"),
+            "agent_run": web.get("review", {}).get("agent"),   # plan summary, disagreements, trace
             "escalations": escalations, "resolved": resolved_list,
             "outcomes": outcome_rows,
             "totals": {"refunded": f"{refunded:,.2f}", "conceded": f"{conceded:,.2f}",
