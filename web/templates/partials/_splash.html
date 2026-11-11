@@ -1,0 +1,57 @@
+{% import "partials/_macros.html" as ui %}
+{# Brand splash, opened from the sidebar logo. The glass cards are the identity's illustration,
+   copied from the Logo artboard: decorative, so hidden from screen readers. Static: no motion yet. #}
+<dialog id="splash" class="splash" aria-labelledby="splash-title">
+  <div class="splash-art" aria-hidden="true">
+    <div class="orb" style="left: 120px; top: 96px"><div class="tex t-violet"></div>
+      <div class="pane">
+        <span class="cap">Case C · ORD-9750</span>
+        <span>Credit not processed</span>
+        <span class="pane-row"><span class="tabular">USD 340.00</span><span class="pane-pill"><i class="mark"></i>44h left</span></span>
+      </div>
+    </div>
+    <div class="orb" style="right: 96px; top: 70px"><div class="tex t-cyan"></div>
+      <div class="pane">
+        <span class="cap">Evidence · Case A</span>
+        <span>4 of 5 documents attached</span>
+        <span class="pane-bar"><i style="width: 80%"></i></span>
+      </div>
+    </div>
+    <div class="orb" style="left: 200px; bottom: -40px"><div class="tex t-green"></div>
+      <div class="pane">
+        <span class="cap">Auto-resolved · Case B</span>
+        <span class="pane-row"><span>Accepted</span><span class="tabular">USD 18.00</span></span>
+        <span class="cap">Below the USD 25 fee to defend</span>
+      </div>
+    </div>
+    <div class="orb" style="right: 180px; bottom: 30px"><div class="tex t-rose"></div>
+      <div class="pane">
+        <span class="cap">Decision · Case A</span>
+        <span class="pane-choice"><span class="on">Challenge</span><span>Accept</span></span>
+      </div>
+    </div>
+    <div class="orb" style="left: -70px; top: 380px"><div class="tex t-blue"></div>
+      <div class="pane" style="left: 68%">
+        <span class="cap">Fee per defended dispute</span>
+        <span class="pane-big tabular">USD 25</span>
+      </div>
+    </div>
+  </div>
+
+  <header class="splash-top">
+    <span class="splash-brand">{{ ui.logo(20) }}dispute desk</span>
+    <button type="button" class="icon-btn" data-splash-close aria-label="Close">{{ ui.icon("close") }}</button>
+  </header>
+
+  <div class="splash-center">
+    <h1 id="splash-title">{{ ui.logo(60) }}<span>dispute desk</span></h1>
+    <p>The decision line between a claim and its answer. An identity for the desk where you decide which disputes are worth fighting.</p>
+    <div class="splash-actions">
+      {% if v.screen == "queue" and v.filter == "all" %}
+        <button type="button" class="btn btn-primary" data-splash-close autofocus>Open the queue</button>
+      {% else %}
+        <a class="btn btn-primary" href="/" autofocus>Open the queue</a>
+      {% endif %}
+    </div>
+  </div>
+</dialog>

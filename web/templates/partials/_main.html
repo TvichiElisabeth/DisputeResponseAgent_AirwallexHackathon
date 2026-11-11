@@ -29,7 +29,7 @@
 <div id="main" class="shell" data-steps='{{ (p.review_steps or []) | tojson }}'>
 
   <aside class="sidebar" aria-label="Main navigation"><div class="sidebar-inner">
-    <a class="brand" href="/" aria-label="Dispute Desk, all disputes">{{ ui.logo(32) }}<span class="lbl wordmark">dispute desk</span></a>
+    <button type="button" class="brand" data-splash aria-haspopup="dialog" aria-label="About Dispute Desk">{{ ui.logo(32) }}<span class="lbl wordmark">dispute desk</span></button>
     <nav class="nav">
       <a class="nav-a {% if v.screen == 'queue' and v.filter == 'needs' %}on{% endif %}" href="/?view=needs"
          {% if v.screen == 'queue' and v.filter == 'needs' %}aria-current="page"{% endif %} aria-label="Needs you, {{ ns.needs }}">
@@ -383,4 +383,6 @@
       <p class="muted small">Everything the agent does appears here.</p>
     {% endif %}
   {{ ui.sheet_close() }}
+
+  {% include "partials/_splash.html" %}
 </div>

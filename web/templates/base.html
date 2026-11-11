@@ -54,6 +54,14 @@
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheets(); });
     document.addEventListener("htmx:afterSwap", () => document.body.classList.remove("sheet-open"));
 
+    // ---- Brand splash: the sidebar logo opens it; Esc, Close or "Open the queue" closes it ----
+    document.addEventListener("click", (e) => {
+      const splash = document.getElementById("splash");
+      if (!splash) return;
+      if (e.target.closest("[data-splash]")) { splash.showModal(); return; }
+      if (e.target.closest("[data-splash-close]")) splash.close();
+    });
+
     // ---- Tabs: inactive panels are hidden, never removed, so the escalation
     //      form still submits every checkbox and the reply. ----
     document.addEventListener("click", (e) => {
