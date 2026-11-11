@@ -1,0 +1,331 @@
+{% import "partials/_macros.html" as ui %}
+<div id="main" data-steps='{{ (p.review_steps or []) | tojson }}'>
+
+  <!-- Hero band: the goal, the key numbers and the one action that matters -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div>
+          <h1>Chargeback queue</h1>
+          <p class="hero-sub">Fight only when it pays. Every defended dispute costs USD {{ p.fee or "25" }}, win or lose.</p>
+        </div>
+        {% if p.has_disputes %}
+        <div class="hero-cta">
+          {{ ui.action_button("/review", "Review open disputes", "primary btn-lg") }}
+          {% if p.review_at %}<span class="hero-meta">Last review {{ p.review_at[11:16] }} UTC</span>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if p.has_disputes %}
+      <dl class="kpis">
+        <div><dt>Open disputes</dt><dd>{{ p.metrics.open }}</dd></div>
+        <div><dt>Money at stake</dt><dd><small>USD</small> {{ p.metrics.at_stake }}</dd></div>
+        <div><dt>Waiting on a person</dt><dd class="{% if p.metrics.waiting %}kpi-warn{% endif %}">{{ p.metrics.waiting }}</dd></div>
+        <div><dt>Fees paid</dt><dd><small>USD</small> {{ p.metrics.fees }}</dd></div>
+      </dl>
+      {% endif %}
+    </div>
+  </section>
+
+  <main class="wrap content">
+
+    {% if p.notice %}
+      <div class="notice notice-{{ p.notice.kind }}" role="status">{{ p.notice.text }}</div>
+    {% endif %}
+
+    {% if not p.has_disputes %}
+      <section class="surface empty">
+        <h2>No disputes yet</h2>
+        <ol class="empty-steps">
+          <li><b>1</b>Pay the three sandbox payment links.</li>
+          <li><b>2</b>Open <strong>Demo controls</strong> and record the payments: the bank opens three disputes.</li>
+          <li><b>3</b>Come back here and run a review.</li>
+        </ol>
+        <button type="button" class="btn btn-primary" data-drawer-toggle>Open demo controls</button>
+      </section>
+    {% else %}
+
+    <!-- Queue -->
+    <section class="surface">
+      <div class="surface-head">
+        <h2>Queue</h2>
+        <span class="muted small">Soonest deadline first</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>Case</th><th>Customer</th><th>Claim</th><th>Stage</th>
+            <th class="num">Amount</th><th>Deadline</th><th>Agent</th>
+          </tr></thead>
+          <tbody>
+          {% for r in p.queue %}
+            {% set open = r.status == "REQUIRES_RESPONSE" %}
+            <tr class="{% if not open %}row-done{% endif %}">
+              <td>{{ ui.case_chip(r.case) }}</td>
+              <td><div class="cell-main">{{ r.customer }}</div><div class="cell-sub">{{ r.product }}</div></td>
+              <td><div class="cell-main">Visa {{ r.reason_code }}</div><div class="cell-sub">{{ r.reason_type | replace("_", " ") | lower }}</div></td>
+              <td>
+                <span class="stage {% if r.stage == 'RFI' %}stage-acronym{% endif %}">{{ r.stage | replace("_", " ") | lower if r.stage != "RFI" else "RFI" }}</span>
+                {% if not open %}<div class="cell-sub">{{ r.status | replace("_", " ") | lower }}</div>{% endif %}
+              </td>
+              <td class="num amount-cell">{{ r.amount }}</td>
+              <td>{{ ui.deadline_chip(r.deadline, open) }}</td>
+              <td>
+                {% if r.waiting %}{{ ui.badge("With a person", "amber") }}
+                {% elif r.resolved %}{{ ui.badge("Resolved", "green") }}
+                {% elif r.proposed %}{{ ui.badge(r.proposed | capitalize, r.tone) }}
+                {% else %}<span class="muted">-</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Agent decisions -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Agent decisions</h2>
+        <p class="muted">The agent proposes. Anything over USD 50, or after a rejection, waits for your approval.</p>
+      </div>
+
+      {% for c in p.cards %}
+      <article class="surface decision verdict-{{ c.tone }}" id="case-{{ c.case }}" style="--i: {{ loop.index0 }}" aria-labelledby="case-{{ c.case }}-title">
+        <div class="decision-grid">
+          <div class="decision-main">
+            <header class="d-head">
+              {{ ui.case_chip(c.case) }}
+              <div>
+                <h3 id="case-{{ c.case }}-title" class="d-amount">{{ c.amount }}</h3>
+                <p class="cell-sub">{{ c.customer }} · {{ c.product }} · Visa {{ c.reason_code }} {{ c.reason_type | replace("_", " ") | lower }}</p>
+              </div>
+              <span class="d-due">{{ ui.deadline_chip(c.deadline) }}</span>
+            </header>
+
+            <div class="verdict">
+              <span class="verdict-icon">{{ ui.verdict_icon(c.action) }}</span>
+              <div>
+                <div class="verdict-word">{{ c.verdict }}{% if c.urgent %} <span class="badge badge-red">Urgent</span>{% endif %}</div>
+                <p class="verdict-line">{{ c.verdict_line }}</p>
+              </div>
+            </div>
+            <p class="rule"><span>Rule</span>{{ c.rule }} <code>{{ c.typed }}</code></p>
+
+            {% if c.bar %}{{ ui.bar(c.bar) }}{% endif %}
+            {{ ui.costs(c) }}
+
+            <blockquote class="explain">
+              <span class="eyebrow">Why, in plain words</span>
+              <p>{{ c.explanation }}</p>
+              {% if c.checks %}
+                <ul class="checks-list">{% for ch in c.checks %}<li>{{ ch }}</li>{% endfor %}</ul>
+              {% endif %}
+            </blockquote>
+          </div>
+
+          <div class="decision-side">
+            {{ ui.thread(c.thread, raw=c.evidence) }}
+          </div>
+        </div>
+
+        {% if c.outcome %}
+          <div class="outcome outcome-{{ c.outcome.kind }}">
+            {% if c.outcome.kind == "ok" %}<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% endif %}
+            <span>{{ c.outcome.text }}</span>
+          </div>
+        {% elif c.approval %}
+          <div class="approval">
+            <div class="approval-head">
+              <div>
+                <h4>Your approval is needed</h4>
+                <p class="muted small">These exact terms are fingerprinted. If anything changes before you click, the server refuses.</p>
+              </div>
+              <span class="fingerprint" title="SHA-256 of exactly these terms">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <code>{{ c.approval.fingerprint[:12] }}…</code>
+              </span>
+            </div>
+            <dl class="terms">
+              {% for label, value in c.approval.rows %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+              {% if c.approval.evidence_sha %}<div><dt>Evidence SHA-256</dt><dd><code>{{ c.approval.evidence_sha }}…</code></dd></div>{% endif %}
+            </dl>
+            <div class="btn-row">
+              {{ ui.action_button("/cases/" ~ c.case ~ "/approve", "Approve and " ~ (c.action | lower), "primary", vals={"fingerprint": c.approval.fingerprint}) }}
+              {{ ui.action_button("/cases/" ~ c.case ~ "/reject", "Don't do it", "secondary", vals={"fingerprint": c.approval.fingerprint}) }}
+            </div>
+          </div>
+        {% endif %}
+      </article>
+      {% else %}
+        <div class="surface placeholder">
+          <p>Run a review. The agent reads each case's evidence, weighs the win chance against the fee, and proposes an action.</p>
+          {{ ui.action_button("/review", "Review open disputes", "primary") }}
+        </div>
+      {% endfor %}
+    </section>
+
+    <!-- Escalations -->
+    {% if p.escalations %}
+    <section class="section">
+      <div class="section-head">
+        <h2>Needs a person</h2>
+        <p class="muted">The rules hand these to you. Where it can, the agent prepares a resolution for you to check and approve.</p>
+      </div>
+
+      {% for e in p.escalations %}
+      <article class="surface decision verdict-amber" id="case-{{ e.case }}" aria-labelledby="esc-{{ e.case }}-title">
+        <div class="decision-grid">
+          <div class="decision-main">
+            <header class="d-head">
+              {{ ui.case_chip(e.case) }}
+              <div>
+                <h3 id="esc-{{ e.case }}-title" class="d-amount">{{ e.amount }}</h3>
+                <p class="cell-sub">{{ e.customer }} · Order {{ e.order }}</p>
+              </div>
+              <span class="d-due">{{ ui.deadline_chip(e.deadline) }}</span>
+            </header>
+
+            <div class="verdict">
+              <span class="verdict-icon">{{ ui.verdict_icon("ESCALATE") }}</span>
+              <div>
+                <div class="verdict-word">Escalated</div>
+                <p class="verdict-line">{{ e.reason }}</p>
+              </div>
+            </div>
+            <blockquote class="explain">
+              <span class="eyebrow">Why, in plain words</span>
+              <p>{{ e.explanation }}</p>
+            </blockquote>
+
+            {% if not e.package %}
+              <ul class="checks-list">{% for ch in e.checks %}<li>{{ ch }}</li>{% endfor %}</ul>
+              <div class="btn-row">{{ ui.action_button("/escalations/" ~ e.case ~ "/prepare", "Prepare resolution package", "primary") }}</div>
+            {% else %}
+              {% set pk = e.package %}
+              <div class="proposal">
+                <span class="eyebrow">Proposed resolution · decided by code</span>
+                <p class="proposal-line">{{ ui.badge(pk.plan.action | capitalize, "green") }} <code>{{ pk.plan.accept_reason }}</code> <strong>{{ pk.refund_text }}</strong></p>
+                <p>{{ pk.plan.explanation }}</p>
+              </div>
+            {% endif %}
+          </div>
+          <div class="decision-side">
+            {{ ui.thread(e.thread, raw=(e.package.evidence if e.package else None)) }}
+          </div>
+        </div>
+
+        {% if e.package %}
+          {% set pk = e.package %}
+          <form id="esc-{{ e.case }}" class="esc-form"
+                hx-post="/escalations/{{ e.case }}/validate" hx-trigger="input delay:400ms, change"
+                hx-target="#gate-{{ e.case }}" hx-swap="innerHTML">
+            <fieldset class="checkboxes">
+              <legend>Check before approving</legend>
+              {% for ch in e.checks %}
+                <label class="check"><input type="checkbox" name="checks" value="{{ loop.index0 }}"><span>{{ ch }}</span></label>
+              {% endfor %}
+            </fieldset>
+
+            <div class="reply">
+              <div class="reply-head">
+                <span class="eyebrow">Reply to the customer</span>
+                <span class="muted small">{% if pk.draft.source == "model" %}Drafted by the model, checked by code{% else %}Template: the model's draft didn't pass the checks{% endif %}</span>
+              </div>
+              <label class="field"><span>Subject</span><input name="subject" value="{{ pk.draft.subject }}"></label>
+              <label class="field"><span>Message</span><textarea name="body" rows="11">{{ pk.draft.body }}</textarea></label>
+            </div>
+
+            <div id="gate-{{ e.case }}" class="gate">
+              {% with g = pk.gate %}{% include "partials/_gate.html" %}{% endwith %}
+            </div>
+          </form>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Resolved -->
+    {% if p.resolved %}
+    <section class="section">
+      <div class="section-head"><h2>Resolved by a person</h2></div>
+      {% for r in p.resolved %}
+      <article class="surface resolved" id="case-{{ r.case }}">
+        <header class="d-head">
+          {{ ui.case_chip(r.case) }}
+          <div>
+            <h3 class="d-amount">{{ r.amount }}</h3>
+            <p class="cell-sub">Accepted <code>{{ r.plan.accept_reason }}</code> by {{ r.by }} · {{ r.at }} UTC ·
+              {% if r.plan.should_refund %}refund requested{% else %}no separate refund: the bank already returned the money{% endif %}</p>
+          </div>
+          <span class="d-due">{{ ui.badge("Resolved", "green") }}</span>
+        </header>
+        <details class="reply-wrap">
+          <summary>
+            <span class="eyebrow">Reply to the customer · ready to send, not sent automatically</span>
+          </summary>
+          <div class="reply-tools"><button type="button" class="btn btn-secondary btn-small" data-copy="#reply-{{ r.case }}"><span>Copy</span></button></div>
+          <pre class="reply-final" id="reply-{{ r.case }}">{{ r.reply }}</pre>
+        </details>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Outcomes -->
+    <section class="surface">
+      <div class="surface-head"><h2>Outcomes and money</h2></div>
+      <div class="totals">
+        <div><span>Refunded to customers</span><strong>USD {{ p.totals.refunded }}</strong></div>
+        <div><span>Conceded</span><strong>USD {{ p.totals.conceded }}</strong></div>
+        <div><span>Dispute fees paid</span><strong>USD {{ p.totals.fees }}</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Case</th><th class="num">Amount</th><th>Final status</th><th class="num">Fee paid</th><th>Outcome</th></tr></thead>
+          <tbody>
+          {% for o in p.outcomes %}
+            <tr><td>{{ ui.case_chip(o.case) }}</td><td class="num amount-cell">{{ o.amount }}</td>
+                <td class="muted">{{ o.status | replace("_", " ") | lower }}</td>
+                <td class="num">USD {{ o.fee }}</td><td>{{ ui.badge(o.label, o.tone) }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </main>
+
+  <!-- Demo controls: the bank's side of the story plus the raw activity log. Not part of the product. -->
+  <aside id="drawer" class="drawer" aria-label="Demo controls">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title">Demo controls</div>
+        <p class="muted small">Plays the card network's side. Not part of the merchant's tool.</p>
+      </div>
+      <button type="button" class="icon-btn" data-drawer-close aria-label="Close demo controls">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-actions">
+      {{ ui.action_button("/sandbox/seed", "Record payments and open disputes", "secondary") }}
+      {{ ui.action_button("/sandbox/reject/A", "Bank rejects Case A's evidence", "secondary", confirm="Simulate the issuing bank rejecting Case A's evidence?") }}
+    </div>
+    <span class="eyebrow">Activity</span>
+    {% if p.activity %}
+      <ol class="activity">
+        {% for a in p.activity %}
+          <li class="{% if a.error %}activity-error{% endif %}">
+            <div class="activity-head"><span>{{ a.label }}</span><time>{{ a.at[11:19] }}</time></div>
+            {% if a.text %}<pre>{{ a.text }}</pre>{% endif %}
+            {% if a.error %}<p class="activity-msg">{{ a.error }}</p>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted small">Everything the agent does appears here.</p>
+    {% endif %}
+  </aside>
+</div>

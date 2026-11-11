@@ -1,0 +1,111 @@
+{% macro spinner() %}<span class="spinner htmx-indicator" aria-hidden="true"></span>{% endmacro %}
+
+{% macro action_button(url, label, kind="secondary", vals=None, confirm=None, disabled=False, include=None) %}
+<button type="button" class="btn btn-{{ kind }}"
+        hx-post="{{ url }}" hx-target="#main" hx-swap="outerHTML" hx-disabled-elt="this"
+        {% if vals %}hx-vals='{{ vals | tojson }}'{% endif %}
+        {% if include %}hx-include="{{ include }}"{% endif %}
+        {% if confirm %}hx-confirm="{{ confirm }}"{% endif %}
+        {% if disabled %}disabled{% endif %}>
+  {{ spinner() }}<span>{{ label }}</span>
+</button>
+{% endmacro %}
+
+{% macro badge(text, tone) %}<span class="badge badge-{{ tone }}">{{ text }}</span>{% endmacro %}
+
+{% macro case_chip(letter) %}<span class="case-chip">{{ letter }}</span>{% endmacro %}
+
+{% macro deadline_chip(dl, open=True) %}
+  {% if not open %}<span class="muted">-</span>
+  {% else %}<span class="due {% if dl.passed %}due-passed{% elif dl.urgent %}due-urgent{% endif %}" title="Due {{ dl.date }}">{{ dl.label }}</span>{% endif %}
+{% endmacro %}
+
+{% macro verdict_icon(action) %}
+{% if action == "CHALLENGE" %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+{% elif action == "ACCEPT" %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>
+{% else %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>
+{% endif %}
+{% endmacro %}
+
+{% macro bar(b) %}
+<div class="meter {% if not b.active %}meter-off{% endif %} meter-{{ b.tone }}">
+  <div class="meter-track" role="img"
+       aria-label="Cost break-even {{ b.be_label }}, policy minimum {{ b.min_label }}, our win chance {{ b.p_label }}">
+    {% if b.on_scale %}
+      <div class="meter-zone" style="left: {{ b.zone_left }}%"><span>worth fighting</span></div>
+      <div class="meter-tick meter-tick-be" style="left: {{ b.be_left }}%" title="Cost break-even"></div>
+    {% endif %}
+    <div class="meter-tick meter-tick-min" style="left: {{ b.min_left }}%" title="Policy minimum"></div>
+    <div class="meter-dot" style="left: {{ b.dot_left }}%" title="Our win chance">
+      <span class="meter-dot-label">{{ b.p_label }}</span>
+    </div>
+  </div>
+  <div class="meter-scale" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+  <p class="meter-head">{{ b.headline }}</p>
+  <div class="meter-legend">
+    <span><i class="lg lg-be"></i>Break-even {{ b.be_label }}</span>
+    <span><i class="lg lg-min"></i>Policy minimum {{ b.min_label }}</span>
+    <span><i class="lg lg-dot"></i>Our win chance {{ b.p_label }}</span>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro costs(c) %}
+{% set a = c.cost_accept | replace(",", "") | float %}
+{% set ch = c.cost_challenge | replace(",", "") | float %}
+{% set top = [a, ch, 1] | max %}
+<div class="costs">
+  <div class="cost {% if c.cheaper == 'accept' %}cost-win{% endif %}">
+    <div class="cost-row"><span>If we accept</span><strong>USD {{ c.cost_accept }}</strong></div>
+    <div class="cost-bar"><i style="width: {{ (a / top * 100) | round(1) }}%"></i></div>
+  </div>
+  <div class="cost {% if c.cheaper == 'challenge' %}cost-win{% endif %}">
+    <div class="cost-row"><span>If we challenge <em>(expected)</em></span><strong>USD {{ c.cost_challenge }}</strong></div>
+    <div class="cost-bar"><i style="width: {{ (ch / top * 100) | round(1) }}%"></i></div>
+  </div>
+</div>
+{% endmacro %}
+
+{# The evidence as a connected thread: the bank's claim at the top, evidence as replies. #}
+{% macro thread(nodes, raw=None, raw_id="") %}
+<div class="thread-wrap">
+  <div class="thread-title">
+    <span class="eyebrow">Evidence the agent read</span>
+    {% if raw %}<details class="raw"><summary>Raw text</summary><pre>{{ raw }}</pre></details>{% endif %}
+  </div>
+  {% set root = nodes[0] %}
+  <div class="thread">
+    <div class="t-node t-root">
+      <span class="avatar avatar-{{ root.kind }}">{{ root.initial }}</span>
+      <div class="t-body">
+        <div class="t-head"><strong>{{ root.who }}</strong><span class="t-when">{{ root.when }}</span></div>
+        <p>{{ root.text }}</p>
+      </div>
+    </div>
+    <ol class="t-replies">
+      {% for n in nodes[1:] %}
+      <li class="t-node t-reply t-{{ n.kind }}">
+        <span class="avatar avatar-{{ n.kind }}">{% if n.kind == "missing" %}?{% else %}{{ n.initial }}{% endif %}</span>
+        <div class="t-body">
+          <div class="t-head">
+            <strong>{{ n.who }}</strong>
+            {% if n.when %}<span class="t-when">{{ n.when }}</span>{% endif %}
+            {% if n.weight == "for" %}<span class="w w-for">Helps us</span>
+            {% elif n.weight == "against" %}<span class="w w-against">Hurts us</span>{% endif %}
+          </div>
+          {% if n.facts %}
+            <ul class="t-facts">
+              {% for label, value in n.facts %}
+                <li class="{% if value in ('no', '0') %}f-off{% endif %}"><span>{{ label }}</span><b>{{ value }}</b></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>{{ n.text }}</p>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>
+{% endmacro %}

@@ -69,3 +69,39 @@ ORDERS = {
     "B": {"customer": "b.ionescu@example.com", "order_id": "ORD-9921", "product": "Phone case"},
     "C": {"customer": "a.popescu@example.com", "order_id": "ORD-9750", "product": "Headphones"},
 }
+
+# The same evidence as EVIDENCE, split into events for the web page's evidence thread.
+# Display only: the model still reads the raw text above. "weight" says which way
+# an event points for the merchant: "for", "against" or "neutral".
+EVIDENCE_THREAD = {
+    "A": [
+        {"who": "Order history", "kind": "system", "when": "Mar–Jul 2026", "weight": "for",
+         "text": "3 earlier orders from the same device (fp_8c21e9) and IP (82.77.14.203). None disputed."},
+        {"who": "Order history", "kind": "system", "when": "11 Aug 2026", "weight": "neutral",
+         "text": "ORD-9013 came from a different device and IP. It was refunded."},
+        {"who": "DHL", "kind": "carrier", "when": "14 Oct 18:02", "weight": "neutral",
+         "text": "Out for delivery."},
+        {"who": "DHL", "kind": "carrier", "when": "14 Oct 19:47", "weight": "for",
+         "text": "Delivered. Signed by J. MARIN. Signature image on file."},
+    ],
+    "B": [
+        {"who": "Posta", "kind": "carrier", "when": "16 Oct 09:12", "weight": "neutral",
+         "text": "Parcel accepted at depot."},
+        {"who": "Posta", "kind": "carrier", "when": "17 Oct 13:40", "weight": "for",
+         "text": "Delivered: left at front door. No signature required for this service."},
+        {"who": "Posta", "kind": "carrier", "when": "17 Oct", "weight": "against",
+         "text": "No delivery photo on file."},
+    ],
+    "C": [
+        {"who": "Returns system", "kind": "system", "when": "01 Oct 2026", "weight": "neutral",
+         "text": "Return label generated and emailed to the customer."},
+        {"who": "a.popescu@example.com", "kind": "customer", "when": "02 Oct 2026", "weight": "against",
+         "text": "Hi, I sent the headphones back today with the return label you emailed. Please refund."},
+        {"who": "a.popescu@example.com", "kind": "customer", "when": "09 Oct 2026", "weight": "against",
+         "text": "It's been a week and still no refund. Can someone please answer me??"},
+        {"who": "support@shop", "kind": "missing", "when": "", "weight": "against",
+         "text": "No reply was ever sent."},
+        {"who": "Returns system", "kind": "system", "when": "", "weight": "against",
+         "text": "Warehouse receipt not recorded. No refund issued."},
+    ],
+}

@@ -54,6 +54,15 @@ def _hash(terms: dict) -> str:
     return hashlib.sha256(json.dumps(terms, sort_keys=True).encode()).hexdigest()
 
 
+def terms_shown(dispute: dict, decision: Decision, action_detail: str,
+                evidence: dict | None = None, reply_text: str | None = None) -> tuple[dict, str]:
+    """What an approver is shown, and its fingerprint. The web UI displays both and
+    sends the fingerprint back with Approve, so the server can refuse if the live
+    terms no longer match the screen. Same terms and hash that verify_approval uses."""
+    terms = _terms(dispute, decision, action_detail, evidence, reply_text)
+    return terms, _hash(terms)
+
+
 def _key(dispute: dict, decision: Decision) -> str:
     return f"{dispute['case']}_{dispute['id']}_{dispute['stage']}_{decision.action}"
 

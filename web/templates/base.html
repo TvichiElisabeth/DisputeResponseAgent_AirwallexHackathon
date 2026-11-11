@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dispute Desk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-3 7a3.5 3.5 0 0 0 6 0z"/><path d="M19 7l-3 7a3.5 3.5 0 0 0 6 0z"/><path d="M8 21h8"/></svg>
+        </span>
+        <span class="brand-name">Dispute Desk</span>
+        <span class="env"><span class="env-dot"></span>Airwallex sandbox</span>
+      </div>
+      <button type="button" class="btn btn-ghost-dark" data-drawer-toggle aria-controls="drawer" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+        <span>Demo controls</span>
+      </button>
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <!-- Shown while a review runs: the agent's steps, one after another. -->
+  <div id="review-overlay" class="overlay" hidden>
+    <div class="overlay-card" role="status" aria-live="polite">
+      <div class="overlay-head">
+        <div>
+          <div class="overlay-title">Agent is reviewing the queue</div>
+          <div class="overlay-sub">Code decides the money. The model reads and explains.</div>
+        </div>
+      </div>
+      <ol class="steps" id="review-steps"></ol>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    // ---- Demo controls drawer (the drawer lives in #main; its open state lives on <body>) ----
+    function setDrawer(open) {
+      document.body.classList.toggle("drawer-open", open);
+      document.querySelectorAll("[data-drawer-toggle]").forEach(b => b.setAttribute("aria-expanded", open));
+    }
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-drawer-toggle]")) setDrawer(!document.body.classList.contains("drawer-open"));
+      if (e.target.closest("[data-drawer-close]")) setDrawer(false);
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") setDrawer(false); });
+
+    // ---- Copy the reply to the clipboard ----
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-copy]");
+      if (!btn) return;
+      const text = document.querySelector(btn.dataset.copy)?.innerText || "";
+      navigator.clipboard.writeText(text).then(() => {
+        const label = btn.querySelector("span") || btn;
+        const old = label.textContent;
+        label.textContent = "Copied";
+        setTimeout(() => (label.textContent = old), 1500);
+      });
+    });
+
+    // ---- Review progress: plays the agent's steps while the request runs ----
+    let stepTimer = null;
+    function startReview() {
+      const main = document.getElementById("main");
+      let cases = [];
+      try { cases = JSON.parse(main?.dataset.steps || "[]"); } catch (_) {}
+      const steps = ["Reading the dispute queue from Airwallex"];
+      cases.forEach(c => {
+        steps.push(`Case ${c.case} · reading the evidence (${c.product.toLowerCase()})`);
+        steps.push(`Case ${c.case} · win chance vs. break-even, then the rules`);
+      });
+      steps.push("Writing the explanations and preparing approvals");
+      const list = document.getElementById("review-steps");
+      list.innerHTML = steps.map(s => `<li><span class="step-icon"></span><span>${s}</span></li>`).join("");
+      const items = [...list.children];
+      let i = 0;
+      items[0].classList.add("active");
+      clearInterval(stepTimer);
+      stepTimer = setInterval(() => {
+        if (i >= items.length - 1) return;           // the last step waits for the server
+        items[i].classList.replace("active", "done");
+        items[++i].classList.add("active");
+      }, 1100);
+      document.getElementById("review-overlay").hidden = false;
+    }
+    function stopReview() {
+      clearInterval(stepTimer);
+      document.getElementById("review-overlay").hidden = true;
+    }
+
+    let lastPath = "";
+    document.addEventListener("htmx:beforeRequest", (e) => {
+      lastPath = e.detail.pathInfo?.requestPath || "";
+      if (lastPath === "/review") startReview();
+    });
+    document.addEventListener("htmx:afterRequest", () => { if (lastPath === "/review") stopReview(); });
+    document.addEventListener("htmx:afterSwap", () => {
+      const main = document.getElementById("main");
+      if (!main) return;
+      if (lastPath === "/review") main.classList.add("just-reviewed");
+      const m = lastPath.match(/^\/(cases|escalations)\/(\w+)\/(approve|reject|resolve)/);
+      if (m) document.getElementById("case-" + m[2])?.classList.add("just-decided");
+    });
+
+    // ---- Show server or network errors instead of failing silently ----
+    function toast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg; t.hidden = false;
+      clearTimeout(t._timer); t._timer = setTimeout(() => (t.hidden = true), 5000);
+    }
+    document.addEventListener("htmx:responseError", (e) =>
+      toast("Something went wrong on the server (" + e.detail.xhr.status + "). Check the activity log in Demo controls."));
+    document.addEventListener("htmx:sendError", () => toast("Can't reach the server."));
+  </script>
+</body>
+</html>
