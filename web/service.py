@@ -1,12 +1,15 @@
 """Glue between the web routes and the existing agent. No money rules live here:
 every decision, guard and API call is the same code the terminal and Streamlit use.
 
-- One lock around everything that reads or writes records/state.json.
+- One lock around everything that reads or writes the state (pessimistic, in this
+  process). Across containers the state backend's version check refuses stale saves
+  (optimistic); each step is then retried once on fresh state.
 - Printed output from the agent is captured into a persistent activity log.
 - The latest review (the plan) is stored in state, so refreshes and tabs agree.
 - Approve carries the fingerprint the person saw; it's checked against live data.
 """
 import contextlib
+import functools
 import io
 import threading
 from dataclasses import asdict
@@ -80,6 +83,8 @@ def run_logged(label: str, fn, *args, **kwargs):
     with contextlib.redirect_stdout(buf):
         try:
             result = fn(*args, **kwargs)
+        except st.StateConflict:
+            raise                   # not a failure of the step: _retry_on_conflict reruns it
         except SystemExit as e:
             error = str(e)
         except Exception as e:  # keep the page usable; show the reason
@@ -88,6 +93,30 @@ def run_logged(label: str, fn, *args, **kwargs):
     if error:
         raise ActionError(error)
     return result
+
+
+def _retry_on_conflict(notify: bool = True):
+    """Optimistic locking across containers: if another container saved the state
+    after this step loaded it, the save is refused (StateConflict). Rerun the whole
+    step once on fresh state. Money calls stay safe on the rerun: they reuse their
+    request_id, and approvals re-check the live dispute and the fingerprint."""
+    def wrap(fn):
+        @functools.wraps(fn)
+        def run(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except st.StateConflict:
+                pass
+            try:
+                return fn(*args, **kwargs)
+            except st.StateConflict:
+                if not notify:
+                    raise
+                with contextlib.suppress(st.StateConflict):
+                    _notice("Someone else changed this at the same moment. "
+                            "Reload the page and try again.", "error")
+        return run
+    return wrap
 
 
 # ---------------- the stored review ----------------
@@ -132,6 +161,7 @@ def approval_for(state: dict, it: dict) -> tuple[dict, str] | None:
 
 # ---------------- actions ----------------
 
+@_retry_on_conflict()
 def seed() -> None:
     with LOCK:
         c = client()
@@ -145,6 +175,7 @@ def seed() -> None:
         _notice("Payments recorded and disputes opened. Run a review next.", "ok")
 
 
+@_retry_on_conflict()
 def reject_a() -> None:
     with LOCK:
         try:
@@ -156,6 +187,7 @@ def reject_a() -> None:
         _notice("The issuing bank rejected Case A's evidence. Review the queue again.", "info")
 
 
+@_retry_on_conflict()
 def review() -> None:
     """Same as Streamlit's review: plan, then act on what needs no person
     (escalations, accepts under the limit) and prepare evidence for challenges."""
@@ -189,6 +221,7 @@ def review() -> None:
             _notice("No open disputes need a response.", "info")
 
 
+@_retry_on_conflict()
 def decide_approval(case: str, shown_fingerprint: str, approve: bool) -> None:
     """Approve or reject a proposed action. Refuses if the live terms no longer
     match the fingerprint the person was shown."""
@@ -223,6 +256,7 @@ def decide_approval(case: str, shown_fingerprint: str, approve: bool) -> None:
                      "ok" if approve else "info")
 
 
+@_retry_on_conflict()
 def prepare_package(case: str) -> None:
     with LOCK:
         try:
@@ -246,6 +280,7 @@ def gate(case: str, subject: str, body: str, ticked: list[str]) -> dict:
             "ready": all_ticked and not problems}
 
 
+@_retry_on_conflict()
 def resolve(case: str, subject: str, body: str, ticked: list[str]) -> None:
     with LOCK:
         g = gate(case, subject, body, ticked)
@@ -267,6 +302,7 @@ def keep_investigating(case: str) -> None:
 
 # ---------------- the page ----------------
 
+@_retry_on_conflict(notify=False)
 def page() -> dict:
     """Everything the dashboard shows, from live Airwallex data plus state."""
     with LOCK:

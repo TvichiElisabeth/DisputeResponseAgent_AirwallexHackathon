@@ -91,3 +91,28 @@ def test_resolve_requires_every_check_on_the_server(env):
     assert env["calls"] == []
     service.resolve("C", "Your order", body, ["0", "1", "2"])
     assert env["calls"] == ["resolved"]
+
+
+def test_a_conflicting_save_reruns_the_step_once(env, monkeypatch):
+    """Another container saved first: the step reruns on fresh state, and on the
+    rerun the approval is checked again (here it still matches, so it completes once)."""
+    real_act, attempts = service.agent.act, []
+
+    def act_conflicting_once(c, s, it, ask):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise st.StateConflict("someone saved first")
+        real_act(c, s, it, ask)
+    monkeypatch.setattr(service.agent, "act", act_conflicting_once)
+
+    service.decide_approval("A", _shown_fingerprint(env["item"]), approve=True)
+    assert len(attempts) == 2 and env["calls"] == ["y"]
+
+
+def test_two_conflicts_in_a_row_ask_the_person_to_reload(env, monkeypatch):
+    def always_conflicts(c, s, it, ask):
+        raise st.StateConflict("someone saved first")
+    monkeypatch.setattr(service.agent, "act", always_conflicts)
+
+    service.decide_approval("A", _shown_fingerprint(env["item"]), approve=True)
+    assert "Reload the page" in st.load()["web"]["notice"]["text"]
