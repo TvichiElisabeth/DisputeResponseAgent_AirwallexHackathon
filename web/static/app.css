@@ -520,6 +520,56 @@ body.sheet-open { overflow: hidden; }
   .edge { animation: none; }
 }
 
+/* ---------- outcomes and money: fees paid / fees avoided rings ---------- */
+.money { display: flex; flex-wrap: wrap; border-top: 1px solid var(--line); }
+.mcol { flex: 1 1 240px; padding: var(--s5); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mlabel { display: flex; justify-content: space-between; gap: var(--s3); color: var(--muted); }
+.mlabel b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.mnote { font-size: 12px; color: var(--muted); }
+.feeviz { display: flex; flex-direction: column; align-items: center; padding: var(--s2) 0; }
+.donut { display: block; width: 100%; height: auto; overflow: visible; }
+.donut .tnum { font-variant-numeric: tabular-nums; }
+.donut .slice { cursor: default; transition: stroke-width .25s cubic-bezier(.175, .885, .32, 1.1);
+  animation: ring-in .9s .3s cubic-bezier(.455, .03, .515, .955) both; }
+.donut .slice:hover { stroke-width: 11; }
+@keyframes ring-in { from { stroke-dasharray: 0 var(--ring-total); } }
+.callout { animation: callout-in .5s 1s ease both; }
+@keyframes callout-in { from { opacity: 0; } to { opacity: 1; } }
+.donut-narrow, .feelist { display: none; }
+.feelist { list-style: none; margin: 0; padding: 0; width: 100%; flex-direction: column; }
+.feelist li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--s3);
+  padding: 10px 0; border-top: 1px solid var(--line); }
+.feelist li:first-child { border-top: 0; }
+.feelist li.muted { color: var(--muted); }
+.ftile { width: 24px; height: 24px; border-radius: 6px; background: var(--hover); font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; }
+.feelist li.muted .ftile { background: var(--bg); }
+.fdot { width: 8px; height: 8px; border-radius: 50%; justify-self: center; }
+.fdesc { display: flex; flex-direction: column; min-width: 0; }
+.fdesc b { font-weight: 500; }
+.fdesc small, .fval small { font-size: 12px; color: var(--muted); }
+.fval { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* the three money figures under the ring: ruled columns, no cards */
+.moneyfigs { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  border-top: 1px solid var(--line); }
+.moneyfigs > div { padding: var(--s4) var(--s5); display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.moneyfigs > div + div { border-left: 1px solid var(--line); }
+.moneyfigs dt { font-size: 12px; color: var(--muted); }
+.moneyfigs dd { margin: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.mfval { font-size: 20px; font-weight: 400; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.mfsub { font-size: 12px; color: var(--muted); line-height: 1.4; }
+@media (max-width: 640px) {
+  .moneyfigs > div + div { border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 640px) {
+  .donut-wide { display: none; }
+  .donut-narrow { display: block; max-width: 200px; }
+  .feelist { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .donut .slice, .callout { animation: none; }
+}
+
 /* ---------- agent run: entry points ---------- */
 .seerun { position: relative; margin-top: auto; display: flex; align-items: center; gap: 10px; width: 100%; height: 44px;
   padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink);

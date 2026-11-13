@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dispute queue · fees avoided</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f8f8f7}
+*{box-sizing:border-box}
+a{color:#1a1a1a;text-decoration:none}a:hover{color:#000000}
+.sidebar{width:240px;flex:0 0 240px;background:#ffffff;box-shadow:0 0 0 1px #e3e3e2;padding:16px 12px;display:flex;flex-direction:column;gap:8px}
+.nav-a{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-radius:8px;color:#1a1a1a;font-weight:500;position:relative}
+.nav-a:hover{background:#f0f0ee;color:#1a1a1a}
+.nav-a.on{background:#1a1a1a;color:#f8f8f7}
+.count{margin-left:auto;min-width:0;height:auto;padding:0;background:none;color:inherit;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;justify-content:center}
+.row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1fr) minmax(0,0.9fr);gap:16px;align-items:center;padding:16px 24px;border-top:1px solid #e3e3e2;color:#1a1a1a}
+a.row:hover{background:#f0f0ee;color:#1a1a1a}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#1a1a1a;white-space:nowrap;background:none!important}
+.dot{width:6px;height:12px;border-radius:0 6px 6px 0;display:inline-block;flex:none}
+input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #1a1a1a;outline-offset:2px}
+.nav-a{transition:background-color .25s,color .25s}
+a.row{transition:background-color .25s;animation:rowIn .5s cubic-bezier(.455,.03,.515,.955) both}
+a.row:nth-of-type(2){animation-delay:.12s}a.row:nth-of-type(3){animation-delay:.24s}
+a.row{position:relative;overflow:hidden;isolation:isolate}
+a.row::after{content:"";position:absolute;z-index:-1;right:-250px;top:50%;width:288px;height:288px;margin-top:-144px;border-radius:50%;background:#00a2c7;filter:blur(64px);opacity:.5;transform:translateX(90px);transition:transform .6s cubic-bezier(.175,.885,.32,1.1);pointer-events:none}
+a.row::before{content:"";position:absolute;z-index:-1;right:-262px;top:50%;width:288px;height:288px;margin-top:-100px;border-radius:50%;background:#0052ff;filter:blur(64px);opacity:.3;transform:translateX(90px);transition:transform .6s cubic-bezier(.175,.885,.32,1.1);pointer-events:none}
+a.row:hover::after,a.row:hover::before,a.row:focus-visible::after,a.row:focus-visible::before{transform:translateX(0)}
+.track{display:block;height:2px;background:#e3e3e2;overflow:hidden}
+.fill{display:block;height:2px;transform-origin:left center;animation:barIn .6s .3s cubic-bezier(.175,.885,.32,1.1) both}
+@keyframes barIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.fill{animation:none}}
+@keyframes rowIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+section[aria-label="Summary"]>div{animation:rowIn .5s cubic-bezier(.455,.03,.515,.955) both}
+@media (prefers-reduced-motion:reduce){a.row,section[aria-label="Summary"]>div{animation:none}.nav-a,a.row{transition:none}}
+.feetile{position:relative;overflow:hidden}
+.feetile>*:not(.fglow){position:relative}
+.fglow{position:absolute;width:288px;height:288px;border-radius:50%;background:#00a2c7;opacity:.35;filter:blur(64px);right:-250px;top:-60px;pointer-events:none}
+.segbar{display:flex;gap:2px;height:8px;margin-top:4px}
+.seg{position:relative;display:block;height:8px;border-radius:4px;transform-origin:left;animation:segIn .6s .3s cubic-bezier(.175,.885,.32,1.1) both}
+.seg .tip{display:none;position:absolute;bottom:14px;left:0;white-space:nowrap;padding:6px 8px;border-radius:6px;background:#1a1a1a;color:#f8f8f7;font-size:12px;z-index:3}
+.seg:last-child .tip{left:auto;right:0}
+.seg:hover .tip{display:block}
+.seg::before{content:"";position:absolute;inset:-8px 0}
+@keyframes segIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.feelegend{display:flex;flex-direction:column;gap:2px;font-size:12px;color:#1a1a1a}
+.feelegend span{display:inline-flex;align-items:center;gap:8px}
+.feelegend i{width:8px;height:8px;border-radius:2px;flex:none}
+.money{display:flex;flex-wrap:wrap;border-top:1px solid #e3e3e2}
+.mcol{flex:1 1 240px;padding:24px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.mcol+.mcol{border-left:1px solid #e3e3e2}
+.mlabel{display:flex;justify-content:space-between;gap:12px;color:#656565}
+.mnum{font-size:28px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.mcur{font-size:16px;font-weight:500;color:#656565}
+.mnote{font-size:12px;color:#656565}
+.feerows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.feerows li{display:grid;grid-template-columns:32px minmax(0,1fr) 72px;align-items:center;gap:14px;padding:12px 0;border-top:1px solid #e3e3e2}
+.feerows li:first-child{border-top:0;padding-top:4px}
+.feerows li.muted{color:#656565}
+.ftile{width:32px;height:32px;border-radius:8px;background:#f0f0ee;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.fdesc{display:flex;flex-direction:column;min-width:0}
+.ftrack{display:block;height:8px}
+.fbar{display:block;height:8px;border-radius:4px;transform-origin:left;animation:segIn .6s .4s cubic-bezier(.175,.885,.32,1.1) both}
+.fval{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.fval small{font-size:12px;font-weight:400;color:#656565}
+.feeviz{display:flex;justify-content:center;padding:8px 0}
+.donut{display:block;width:100%;max-width:760px;height:auto;overflow:visible}
+.callout{animation:calloutIn .5s 1s ease both}
+@keyframes calloutIn{from{opacity:0}to{opacity:1}}
+.donut .slice{transition:stroke-width .25s cubic-bezier(.175,.885,.32,1.1);animation:donutIn .9s .3s cubic-bezier(.455,.03,.515,.955) both;cursor:default}
+.donut .slice:hover{stroke-width:11}
+@keyframes donutIn{from{stroke-dasharray:0 525}}
+@media (prefers-reduced-motion:reduce){.donut .slice,.callout{animation:none}}
+@media (max-width:640px){.mcol+.mcol{border-left:0;border-top:1px solid #e3e3e2}.feeviz{justify-content:center}}
+@media (prefers-reduced-motion:reduce){.seg,.fbar{animation:none}}
+@media (max-width:1279px){.sidebar{width:72px;flex-basis:72px;padding:16px 8px}.lbl{display:none}.nav-a{justify-content:center;padding:0}.count{position:absolute;top:2px;right:2px;min-width:18px;height:18px;padding:0 4px}}
+</style>
+</helmet>
+<div style="display: flex; min-height: 100vh; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; background: #f8f8f7">
+
+  <aside class="sidebar" aria-label="Main navigation">
+    <div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 12px; margin-bottom: 8px">
+      <svg width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Dispute Desk" style="flex: none"><rect width="32" height="32" rx="7" fill="#1a1a1a"></rect><rect x="15.25" y="8" width="1.5" height="16" fill="#f8f8f7"></rect><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="#f8f8f7"></path><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="#f8f8f7" stroke-width="1.5"></path></svg>
+      <span class="lbl" style="font-size: 20px; font-weight: 400; letter-spacing: -0.045em; color: #1a1a1a">dispute desk</span>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 4px">
+      <a class="nav-a" href="#" aria-label="Needs you, 2 cases">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+        <span class="lbl">Needs you</span><span class="count">2</span>
+      </a>
+      <a class="nav-a on" href="#" aria-current="page">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"></path></svg>
+        <span class="lbl">All disputes</span>
+      </a>
+      <a class="nav-a" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg>
+        <span class="lbl">Auto-resolved</span>
+      </a>
+      <a class="nav-a" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>
+        <span class="lbl">Rules</span>
+      </a>
+      <a class="nav-a" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+        <span class="lbl">Settings</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px 32px">
+      <label style="flex: 1 1 320px; max-width: 480px; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; background: #ffffff; border-radius: 10px; box-shadow: 0 0 0 1px #e3e3e2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search disputes</span>
+        <input type="search" placeholder="Search case, customer or order" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: #1a1a1a; height: 40px">
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; color: #656565">
+        <span>Deadline</span>
+        <select style="height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: #ffffff; box-shadow: 0 0 0 1px #e3e3e2; font: inherit; color: #1a1a1a">
+          <option>Any deadline</option>
+          <option>Due in 48h</option>
+          <option>Due this week</option>
+        </select>
+      </label>
+    </header>
+
+    <main style="padding: 8px 32px 40px; display: flex; flex-direction: column; gap: 24px; max-width: 1360px; width: 100%">
+      <div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 600; line-height: 1.3">All disputes</h1>
+        <p style="margin: 4px 0 0; color: #656565">Fight only when it pays. Every defended dispute costs USD 25, win or lose.</p>
+      </div>
+
+      <section aria-label="Summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px">
+        <div style="background: #ffffff; border-radius: 10px; box-shadow: 0 0 0 1px #e3e3e2; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+          <span style="color: #656565">Open disputes</span>
+          <span style="font-size: 28px; font-weight: 600; line-height: 1.2">3</span>
+          <span style="font-size: 12px; color: #656565">2 waiting on you</span>
+        </div>
+        <div style="background: #ffffff; border-radius: 10px; box-shadow: 0 0 0 1px #e3e3e2; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+          <span style="color: #656565">Amount at risk</span>
+          <span style="font-size: 28px; font-weight: 600; line-height: 1.2"><span style="font-size: 16px; font-weight: 500; color: #656565">USD </span>1,598.00</span>
+          <span style="font-size: 12px; color: #656565">Across open disputes</span>
+        </div>
+        <div style="background: #ffffff; border-radius: 10px; box-shadow: 0 0 0 1px #e3e3e2; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+          <span style="color: #656565">Due in 48h</span>
+          <span style="font-size: 28px; font-weight: 600; line-height: 1.2; display: flex; align-items: center; gap: 12px">1 <span class="pill" style="color: #C4262B"><span class="dot" style="background: #C4262B"></span>Case C</span></span>
+          <span style="font-size: 12px; color: #656565">Soonest deadline first below</span>
+        </div>
+      </section>
+
+      <section aria-labelledby="qh" style="background: #ffffff; border-radius: 10px; box-shadow: 0 0 0 1px #e3e3e2; overflow: hidden">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 24px">
+          <h2 id="qh" style="margin: 0; font-size: 20px; font-weight: 600">Queue</h2>
+          <span style="font-size: 12px; color: #656565">Soonest deadline first</span>
+        </div>
+        <div style="overflow-x: auto">
+          <div style="min-width: 880px">
+            <div class="row" style="padding-top: 12px; padding-bottom: 12px; background: #f0f0ee; border-top: 0; font-size: 12px; font-weight: 500; color: #656565; text-transform: uppercase; letter-spacing: 0.04em">
+              <span>Case</span><span style="text-align: right">Amount</span><span>Customer</span><span>Reason</span><span>Decision</span><span>Deadline</span>
+            </div>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+              <a class="row" href="{{r.href}}">
+                <span style="display: flex; align-items: center; gap: 12px; min-width: 0">
+                  <span style="flex: none; width: 32px; height: 32px; border-radius: 8px; background: #f0f0ee; color: #1a1a1a; font-weight: 600; display: inline-flex; align-items: center; justify-content: center">{{r.case}}</span>
+                  <span style="min-width: 0"><span style="display: block; font-weight: 500">{{r.title}}</span><span style="display: block; font-size: 12px; color: #656565">{{r.order}}</span></span>
+                </span>
+                <span style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">{{r.amount}}</span>
+                <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.customer}}</span>
+                <span style="min-width: 0"><span style="display: block">{{r.reason}}</span><span style="display: block; font-size: 12px; color: #656565">Visa {{r.code}}</span></span>
+                <span><span class="pill" style="{{r.pillBg}}"><span class="dot" style="{{r.pillDot}}"></span>{{r.decision}}</span></span>
+                <span style="display: flex; flex-direction: column; gap: 6px; max-width: 120px">
+                  <span style="display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums"><span style="{{r.numStyle}}">{{r.dueNum}}</span><span style="font-size: 12px; color: #656565">{{r.dueUnit}}</span></span>
+                  <sc-if value="{{r.hasBar}}" hint-placeholder-val="{{ true }}"><span class="track" title="Time left out of 7 days"><span class="fill" style="{{r.barStyle}}"></span></span></sc-if>
+                </span>
+              </a>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+      <section aria-labelledby="om" style="background: #ffffff; border-radius: 10px; box-shadow: 0 0 0 1px #e3e3e2; overflow: hidden">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; padding: 24px">
+          <h2 id="om" style="margin: 0; font-size: 20px; font-weight: 600">Outcomes and money</h2>
+          <span style="font-size: 12px; color: #656565">Counted only when the decision was sent to Airwallex</span>
+        </div>
+        <div class="money">
+          <div class="mcol">
+            <span class="mlabel">Dispute fees paid <span style="color: #1a1a1a; font-weight: 500; font-variant-numeric: tabular-nums">USD 25.00</span></span>
+            <div class="feeviz">
+              <svg class="donut" viewBox="0 0 380 250" style="max-width: 380px" role="img" aria-label="Dispute fees paid USD 25.00, Case A dispute fee for evidence submitted at RFI. That is 5 percent of USD 550.00 in fees at stake; the other USD 525.00 was avoided.">
+                <circle cx="150" cy="125" r="84" fill="none" stroke="#f0f0ee" stroke-width="8"><title>Fees avoided · USD 525.00 (95% of fees at stake)</title></circle>
+                <g transform="rotate(-90 150 125)">
+                  <circle class="slice" cx="150" cy="125" r="84" fill="none" stroke="#00a2c7" stroke-width="8" pathLength="550" stroke-dasharray="23 527" stroke-dashoffset="-1"><title>Case A · dispute fee paid · USD 25.00 (5% of fees at stake)</title></circle>
+                </g>
+                <text x="150" y="117" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">USD</text>
+                <text x="150" y="141" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="600" fill="#1a1a1a" style="font-variant-numeric: tabular-nums">25.00</text>
+                <text x="150" y="160" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">paid</text>
+
+                <g class="callout">
+                  <circle cx="162" cy="42" r="3" fill="#00a2c7"></circle>
+                  <path d="M167 37L189 22H236" stroke="#1a1a1a" stroke-width="1" fill="none"></path>
+                  <rect x="244" y="10" width="24" height="24" rx="6" fill="#f0f0ee"></rect>
+                  <text x="256" y="27" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">A</text>
+                  <text x="276" y="27" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="500" fill="#1a1a1a">Dispute fee</text>
+                  <text x="244" y="54" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#1a1a1a" style="font-variant-numeric: tabular-nums">USD 25.00 <tspan font-weight="400" fill="#656565">· 5%</tspan></text>
+                  <text x="244" y="74" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">Evidence submitted</text>
+                  <text x="244" y="90" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">at RFI</text>
+                </g>
+
+                <g class="callout muted">
+                  <circle cx="230" cy="157" r="3" fill="#d6d6d4"></circle>
+                  <path d="M236 160L252 172H262" stroke="#d6d6d4" stroke-width="1" fill="none"></path>
+                  <text x="268" y="176" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="500" fill="#656565">Avoided</text>
+                  <text x="268" y="196" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565" style="font-variant-numeric: tabular-nums">USD 525.00 · 95%</text>
+                </g>
+              </svg>
+            </div>
+            <span class="mnote">Share of the USD 550.00 in fees these cases put at stake.</span>
+          </div>
+          <div class="mcol" style="flex: 2 1 480px">
+            <span class="mlabel">Fees avoided <span style="color: #1a1a1a; font-weight: 500; font-variant-numeric: tabular-nums">USD 525.00</span></span>
+            <div class="feeviz">
+              <svg class="donut" viewBox="0 0 760 250" role="img" aria-label="Fees avoided USD 525.00. Case A arbitration fee USD 500.00, 95 percent. Case B dispute fee USD 25.00, 5 percent. Case C not counted, escalated and still with a person.">
+                <circle cx="380" cy="125" r="84" fill="none" stroke="#f0f0ee" stroke-width="8"></circle>
+                <g transform="rotate(-90 380 125)">
+                  <circle class="slice" cx="380" cy="125" r="84" fill="none" stroke="#00a2c7" stroke-width="8" pathLength="525" stroke-dasharray="496 29" stroke-dashoffset="-2"><title>Case A · arbitration fee · USD 500.00 (95%)</title></circle>
+                  <circle class="slice" cx="380" cy="125" r="84" fill="none" stroke="#1a1a1a" stroke-width="8" pathLength="525" stroke-dasharray="21 504" stroke-dashoffset="-502"><title>Case B · dispute fee · USD 25.00 (5%)</title></circle>
+                </g>
+                <text x="380" y="117" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">USD</text>
+                <text x="380" y="141" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="600" fill="#1a1a1a" style="font-variant-numeric: tabular-nums">525.00</text>
+
+                <g class="callout">
+                  <circle cx="464" cy="125" r="3" fill="#00a2c7"></circle>
+                  <path d="M470 125H520" stroke="#1a1a1a" stroke-width="1" fill="none"></path>
+                  <rect x="528" y="98" width="24" height="24" rx="6" fill="#f0f0ee"></rect>
+                  <text x="540" y="115" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">A</text>
+                  <text x="562" y="115" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="500" fill="#1a1a1a">Arbitration fee</text>
+                  <text x="528" y="142" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#1a1a1a" style="font-variant-numeric: tabular-nums">USD 500.00 <tspan font-weight="400" fill="#656565">· 95%</tspan></text>
+                  <text x="528" y="162" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">Accepted after the bank</text>
+                  <text x="528" y="178" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">rejected our evidence</text>
+                </g>
+
+                <g class="callout">
+                  <circle cx="367.4" cy="42" r="3" fill="#1a1a1a"></circle>
+                  <path d="M362 37L340 22H244" stroke="#1a1a1a" stroke-width="1" fill="none"></path>
+                  <rect x="212" y="10" width="24" height="24" rx="6" fill="#f0f0ee"></rect>
+                  <text x="224" y="27" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1a1a1a">B</text>
+                  <text x="200" y="27" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="500" fill="#1a1a1a">Dispute fee</text>
+                  <text x="236" y="54" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#1a1a1a" style="font-variant-numeric: tabular-nums">USD 25.00 <tspan font-weight="400" fill="#656565">· 5%</tspan></text>
+                  <text x="236" y="74" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">Accepted at first stage; the fee</text>
+                  <text x="236" y="90" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">was more than the USD 18.00</text>
+                </g>
+
+                <g class="callout muted">
+                  <rect x="212" y="176" width="24" height="24" rx="6" fill="#f8f8f7"></rect>
+                  <text x="224" y="193" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#656565">C</text>
+                  <text x="200" y="193" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="500" fill="#656565">Not counted</text>
+                  <text x="236" y="220" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#656565">Escalated, still with a person</text>
+                </g>
+              </svg>
+            </div>
+            <span class="mnote">Avoided means the fee fighting on would have cost, not a guaranteed saving.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var tone = {
+      challenge: ['', 'background: #1a1a1a'],
+      accept: ['color: #656565', 'background: #7c7c7c'],
+      needs: ['', 'background: transparent; box-shadow: inset 0 0 0 1.5px #1a1a1a']
+    };
+    var rows = [
+      { case: 'C', title: 'Credit not processed', order: 'ORD-9750', amount: 'USD 340.00', customer: 'a.popescu@example.com', reason: 'Refund not received', code: '13.6', decision: 'Needs you', t: 'needs', due: '44h left', urgent: true, href: 'CaseC.dc.html' },
+      { case: 'B', title: 'Not received, small amount', order: 'ORD-9921', amount: 'USD 18.00', customer: 'b.ionescu@example.com', reason: 'Item not received', code: '13.1', decision: 'Accept', t: 'accept', due: 'Auto-resolved', done: true, href: '#' },
+      { case: 'A', title: 'Fraud claim, strong evidence', order: 'ORD-9902', amount: 'USD 1,240.00', customer: 'j.marin@example.com', reason: 'Fraud, card not present', code: '10.4', decision: 'Needs you', t: 'needs', due: '6d left', href: 'CaseA.dc.html' }
+    ];
+    return {
+      rows: rows.map(function (r) {
+        return Object.assign({}, r, {
+          pillBg: tone[r.t][0], pillDot: tone[r.t][1],
+          numStyle: r.done ? 'font-size: 14px; color: #656565' : ('font-size: 20px; font-weight: 400; letter-spacing: -0.03em; line-height: 1.1; color: ' + (r.urgent ? '#C4262B' : '#1a1a1a')),
+          dueNum: r.done ? 'Resolved' : r.due.split(' ')[0],
+          dueUnit: r.done ? '' : 'left',
+          hasBar: !r.done,
+          barStyle: (function () { var m = /^(\d+)([hd])/.exec(r.due); var h = m ? (m[2] === 'd' ? +m[1] * 24 : +m[1]) : 0; return 'width: ' + Math.round(Math.min(h / 168, 1) * 100) + '%; background: ' + (r.urgent ? '#C4262B' : '#1a1a1a'); })()
+        });
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

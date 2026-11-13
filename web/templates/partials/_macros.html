@@ -137,6 +137,56 @@
       </section>
 {% endmacro %}
 
+{# A ring chart from view.ring(): grey track, one slice per amount, callouts with a
+   leader to each label. Below 640px the SVG callouts hide and the same callouts show
+   as a list under a ring-only SVG, so text never shrinks below its size. #}
+{% set RING_FONT = 'font-family="Inter, system-ui, sans-serif"' %}
+{% macro ring_body(g, cx, cy) %}{% set font = RING_FONT %}
+  <circle cx="{{ cx }}" cy="{{ cy }}" r="{{ g.r }}" fill="none" stroke="#f0f0ee" stroke-width="8"/>
+  <g transform="rotate(-90 {{ cx }} {{ cy }})">
+    {% for s in g.slices %}
+    <circle class="slice" cx="{{ cx }}" cy="{{ cy }}" r="{{ g.r }}" fill="none" stroke="{{ s.color }}" stroke-width="8"
+            pathLength="{{ g.total }}" stroke-dasharray="{{ s.dash }} {{ s.rest }}" stroke-dashoffset="{{ s.offset }}"><title>{{ s.title }}</title></circle>
+    {% endfor %}
+  </g>
+  <text x="{{ cx }}" y="{{ cy - 8 }}" text-anchor="middle" {{ font | safe }} font-size="12" fill="#656565">{{ g.centre.top }}</text>
+  <text x="{{ cx }}" y="{{ cy + 16 }}" text-anchor="middle" {{ font | safe }} font-size="26" font-weight="600" fill="#1a1a1a" class="tnum">{{ g.centre.value }}</text>
+  {% if g.centre.bottom %}<text x="{{ cx }}" y="{{ cy + 35 }}" text-anchor="middle" {{ font | safe }} font-size="12" fill="#656565">{{ g.centre.bottom }}</text>{% endif %}
+{% endmacro %}
+
+{% macro ring(g) %}{% set font = RING_FONT %}
+<div class="feeviz" style="--ring-total: {{ g.total }}">
+  <svg class="donut donut-wide" viewBox="0 0 {{ g.w }} {{ g.h }}" style="max-width: {{ g.w }}px" role="img" aria-label="{{ g.aria }}">
+    {{ ring_body(g, g.cx, g.cy) }}
+    {% for c in g.callouts %}
+    <g class="callout{% if c.muted %} muted{% endif %}" aria-hidden="true">
+      {% if c.dot %}<circle cx="{{ c.dot[0] }}" cy="{{ c.dot[1] }}" r="3" fill="{{ c.dot_color }}"/>{% endif %}
+      {% if c.path %}<path d="{{ c.path }}" stroke="{{ '#d6d6d4' if c.muted else '#1a1a1a' }}" stroke-width="1" fill="none"/>{% endif %}
+      {% if c.tile_box %}
+      <rect x="{{ c.tile_box.x }}" y="{{ c.tile_box.y }}" width="24" height="24" rx="6" fill="{{ '#f8f8f7' if c.muted else '#f0f0ee' }}"/>
+      <text x="{{ c.tile_box.cx }}" y="{{ c.ly }}" text-anchor="middle" {{ font | safe }} font-size="12" font-weight="600" fill="{{ '#656565' if c.muted else '#1a1a1a' }}">{{ c.tile }}</text>
+      {% endif %}
+      <text x="{{ c.title_x }}" y="{{ c.ly }}" text-anchor="{{ c.anchor }}" {{ font | safe }} font-size="14" font-weight="500" fill="{{ '#656565' if c.muted else '#1a1a1a' }}">{{ c.title }}</text>
+      {% if c.amount %}<text x="{{ c.text_x }}" y="{{ c.amount_y }}" text-anchor="{{ c.anchor }}" {{ font | safe }} font-size="14" font-weight="600" fill="#1a1a1a" class="tnum">{{ c.amount }} <tspan font-weight="400" fill="#656565">· {{ c.pct }}</tspan></text>{% endif %}
+      {% for line in c.reason_lines %}<text x="{{ c.text_x }}" y="{{ line.y }}" text-anchor="{{ c.anchor }}" {{ font | safe }} font-size="12" fill="#656565" class="tnum">{{ line.text }}</text>{% endfor %}
+    </g>
+    {% endfor %}
+  </svg>
+  <svg class="donut donut-narrow" viewBox="{{ g.cx - 100 }} {{ g.cy - 100 }} 200 200" role="img" aria-label="{{ g.aria }}">
+    {{ ring_body(g, g.cx, g.cy) }}
+  </svg>
+  <ul class="feelist">
+    {% for c in g.callouts %}
+    <li class="{% if c.muted %}muted{% endif %}">
+      {% if c.tile %}<span class="ftile" aria-hidden="true">{{ c.tile }}</span>{% else %}<span class="fdot" style="background: {{ c.dot_color }}" aria-hidden="true"></span>{% endif %}
+      <span class="fdesc"><b>{% if c.tile %}Case {{ c.tile }} · {% endif %}{{ c.title }}</b>{% if c.reason %}<small>{{ c.reason }}</small>{% endif %}</span>
+      {% if c.amount %}<span class="fval">{{ c.amount }}<small>{{ c.pct }}</small></span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endmacro %}
+
 {# The dispute desk mark: two D's on one stem, the claim in outline, the response solid. #}
 {% macro logo(size=32) -%}
 <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 32 32" aria-hidden="true" class="logo-mark"><rect width="32" height="32" rx="7" fill="#1a1a1a"/><rect x="15.25" y="8" width="1.5" height="16" fill="#f8f8f7"/><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="#f8f8f7"/><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="#f8f8f7" stroke-width="1.5"/></svg>

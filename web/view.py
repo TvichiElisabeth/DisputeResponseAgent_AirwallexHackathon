@@ -1,6 +1,7 @@
 """Display data for the templates. Every number comes from the policy or Airwallex;
 this module only formats it. No decisions are made here."""
 import json
+import math
 import re
 from datetime import datetime, timezone
 
@@ -369,3 +370,129 @@ def agent_run(run: dict, case: str) -> dict:
         "outcome": VERDICT.get(action, "—") if action else "—", "outcome_kind": ACT_KIND.get(action, "none"),
         "disagreements": disagreements_for(run, case), "spans": rows,
     }
+
+
+# ---------------- ring charts (fees paid / fees avoided) ----------------
+
+CASE_COLOR = {"A": "#00a2c7", "B": "#1a1a1a", "C": "#0052ff"}   # same colour per case in every ring
+RING_R = 84
+RING_H = 250
+LABEL_GAP = 56          # ring edge to the label column
+
+
+def _wrap(text: str, width: int = 30, max_lines: int = 2) -> list[str]:
+    lines, cur = [], ""
+    for word in text.split():
+        if cur and len(cur) + 1 + len(word) > width:
+            lines.append(cur)
+            cur = word
+        else:
+            cur = f"{cur} {word}".strip()
+    if cur:
+        lines.append(cur)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1].rstrip(".,;") + "…"
+    return lines
+
+
+def _anchor_deg(start: float, end: float) -> float:
+    """Where a callout's dot sits on its arc (degrees clockwise from 12 o'clock):
+    the middle, except a big arc anchors at 3 or 9 o'clock so its label sits beside the ring."""
+    if end - start > 90:
+        for a in (90.0, 270.0):
+            if start + 8 <= a <= end - 8:
+                return a
+    return (start + end) / 2
+
+
+def ring(total: float, parts: list[dict], extras: list[dict], centre: dict, aria: str) -> dict:
+    """Geometry for one ring chart. Display only: the amounts come from the caller.
+
+    parts: arcs in order from 12 o'clock, clockwise: {value, color (None = grey track,
+           no slice), title (tooltip), callout (dict or None)}.
+    extras: callouts with no arc (e.g. a case not counted): drawn bottom-left, no dot.
+    callout: {tile, title, amount, pct, reason, muted}.
+    pathLength = total, so each slice's dash length is its amount."""
+    circ = 2 * math.pi * RING_R
+    total = total if total > 0 else 1.0
+    gap = 3 * total / circ                  # ~3px between slices, in amount units
+    min_dash = 2 * total / circ
+
+    slices, pending = [], []
+    start = 0.0
+    for p in parts:
+        v = float(p["value"])
+        if p.get("color") and v > 0:
+            dash = max(v - gap, min_dash)
+            slices.append({"color": p["color"], "dash": round(dash, 3), "rest": round(total - dash, 3),
+                           "offset": round(-(start + gap / 2), 3), "title": p.get("title", "")})
+        if p.get("callout") and v > 0:
+            a = _anchor_deg(start / total * 360, (start + v) / total * 360)
+            pending.append({**p["callout"], "deg": a, "side": 1 if math.sin(math.radians(a)) >= 0 else -1,
+                            "dot_color": p.get("color") or "#d6d6d4"})
+        start += v
+    for e in extras:
+        pending.append({**e, "deg": None, "side": -1, "dot_color": None})
+
+    # Labels on both sides: a wide chart. Right side only: a compact one, with the
+    # label column closer to the ring and shorter lines, so text stays inside the SVG.
+    wide = any(c["side"] < 0 for c in pending)
+    w, cx, cy = (760, 380, RING_H / 2) if wide else (400, 140, RING_H / 2)
+    label_gap, wrap_at = (LABEL_GAP, 32) if wide else (26, 20)
+    h = RING_H
+
+    callouts = []
+    for c in pending:
+        if c["deg"] is None:
+            dot, ly = None, cy + 68
+        else:
+            rad = math.radians(c["deg"])
+            dot = (round(cx + RING_R * math.sin(rad), 1), round(cy - RING_R * math.cos(rad), 1))
+            if abs(dot[1] - cy) < 30:
+                ly = dot[1] + 5                    # straight leader
+            elif dot[1] < cy:
+                ly = dot[1] - 15
+            else:
+                ly = dot[1] + 20
+        reasons = _wrap(c.get("reason") or "", wrap_at)
+        lines = 1 + (1 if c.get("amount") else 0) + len(reasons)
+        callouts.append({**c, "dot": dot, "ly": max(27.0, ly), "reasons": reasons,
+                         "height": 17 + 4 + 20 * (lines - 1) + (6 if c.get("amount") else 0)})
+
+    for side in (1, -1):                         # labels on one side never overlap
+        col = sorted((c for c in callouts if c["side"] == side), key=lambda c: c["ly"])
+        bottom = 0.0
+        for c in col:
+            c["ly"] = max(c["ly"], bottom + 14 + 17)
+            bottom = c["ly"] - 17 + c["height"]
+            h = max(h, bottom + 8)
+
+    for c in callouts:
+        side, ly = c["side"], c["ly"]
+        col_x = cx + side * (RING_R + label_gap)
+        if c.get("tile"):
+            tx = col_x + 8 if side > 0 else col_x - 8 - 24
+            c["tile_box"] = {"x": tx, "y": ly - 17, "cx": tx + 12}
+            c["title_x"], c["text_x"] = (tx + 32, tx) if side > 0 else (tx - 12, tx + 24)
+        else:
+            c["tile_box"] = None
+            c["title_x"] = c["text_x"] = col_x + side * 6
+        c["anchor"] = "start" if side > 0 else "end"
+        c["amount_y"] = ly + 27
+        first = ly + (47 if c.get("amount") else 27)
+        c["reason_lines"] = [{"y": first + 16 * i, "text": t} for i, t in enumerate(c["reasons"])]
+        if c["dot"]:
+            dx, dy = c["dot"]
+            line_y = ly - 5
+            if abs(line_y - dy) < 2:
+                c["path"] = f"M{dx + side * 6:.1f} {dy:.1f}H{col_x:.1f}"
+            else:                                # bend, never past the label column
+                bend = min(27.0, max(9.0, abs(col_x - dx) / 2))
+                c["path"] = (f"M{dx + side * 5:.1f} {dy + (-5 if line_y < dy else 5):.1f}"
+                             f"L{dx + side * bend:.1f} {line_y:.1f}H{col_x:.1f}")
+        else:
+            c["path"] = None
+
+    return {"w": w, "h": round(h), "cx": cx, "cy": cy, "r": RING_R, "total": round(total, 2),
+            "slices": slices, "callouts": callouts, "centre": centre, "aria": aria}

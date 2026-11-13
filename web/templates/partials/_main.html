@@ -98,9 +98,7 @@
       <section class="stats" aria-label="Summary">
         <div class="card stat"><span class="stat-label">Open disputes</span><span class="stat-value">{{ ns.open }}</span><span class="stat-sub">{{ ns.needs }} waiting on you</span></div>
         <div class="card stat"><span class="stat-label">Amount at risk</span><span class="stat-value"><small>{{ ns.cur }}</small> {{ "{:,.2f}".format(ns.risk) }}</span><span class="stat-sub">Across open disputes</span></div>
-        <div class="card stat"><span class="stat-label">Due in 48h</span><span class="stat-value {% if ns.due48 %}is-urgent{% endif %}">{{ ns.due48 }}</span><span class="stat-sub">Soonest deadline first below</span></div>
-        <div class="card stat"><span class="stat-label">Win rate</span><span class="stat-value muted">–</span><span class="stat-sub">Not tracked yet</span></div>
-      </section>
+        <div class="card stat"><span class="stat-label">Due in 48h</span><span class="stat-value {% if ns.due48 %}is-urgent{% endif %}">{{ ns.due48 }}</span><span class="stat-sub">Soonest deadline first below</span></div>      </section>
 
       <section class="card flush" aria-labelledby="qh">
         <div class="card-head padded">
@@ -140,11 +138,30 @@
       </section>
 
       <section class="card flush" aria-labelledby="oh">
-        <div class="card-head padded"><h2 id="oh">Outcomes and money</h2></div>
-        <dl class="totals">
-          <div><dt>Refunded to customers</dt><dd>USD {{ p.totals.refunded }}</dd></div>
-          <div><dt>Conceded</dt><dd>USD {{ p.totals.conceded }}</dd></div>
-          <div><dt>Dispute fees paid</dt><dd>USD {{ p.totals.fees }}</dd></div>
+        <div class="card-head padded">
+          <h2 id="oh">Outcomes and money</h2>
+          <span class="muted small">Counted only when the decision was sent to Airwallex</span>
+        </div>
+        <div class="money">
+          <div class="mcol">
+            <span class="mlabel">Fees avoided <b>{{ p.fees.avoided_total }}</b></span>
+            {{ ui.ring(p.fees.avoided) }}
+            <span class="mnote">Avoided means the fee fighting on would have cost, not a guaranteed saving.</span>
+          </div>
+        </div>
+        <dl class="moneyfigs">
+          <div>
+            <dt>Dispute fees paid</dt>
+            <dd><span class="mfval">{{ p.fees.paid_total }}</span><span class="mfsub">{{ p.fees.paid_sub }}. Fees as set in the policy; the sandbox doesn’t charge them.</span></dd>
+          </div>
+          <div>
+            <dt>Refunded to customers</dt>
+            <dd><span class="mfval">USD {{ p.totals.refunded }}</span><span class="mfsub">Sent back with an accept at the first stage</span></dd>
+          </div>
+          <div>
+            <dt>Conceded</dt>
+            <dd><span class="mfval">USD {{ p.totals.conceded }}</span><span class="mfsub">Accepted with no separate refund: the bank already took the money back</span></dd>
+          </div>
         </dl>
         <div class="table-wrap">
           <table class="table">

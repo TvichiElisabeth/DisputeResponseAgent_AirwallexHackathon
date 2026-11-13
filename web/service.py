@@ -22,7 +22,8 @@ from core.client import AirwallexClient
 from merchant import agent, refunds
 from merchant.approvals import terms_shown
 from merchant.drafter import check_draft
-from merchant.policy import CHALLENGE, DISPUTE_FEE, ESCALATE, Decision, EvidenceFlags
+from merchant.policy import (ARBITRATION_FEE, CHALLENGE, DISPUTE_FEE, ESCALATE, Decision,
+                             EvidenceFlags)
 from merchant.queue import read_queue
 from merchant.record_payments import record_payments
 from records import progress
@@ -297,6 +298,89 @@ def review(on_step=None) -> None:
         _update_web(store)
         if not items:
             _notice("No open disputes need a response.", "info")
+
+
+def fees_summary(state: dict, rows: list[dict]) -> dict:
+    """Dispute fees paid and avoided, counted only from actions Airwallex accepted
+    (the action log is written after a successful call, so a plan alone counts nothing).
+
+    Avoided: a case whose ACCEPT was sent. The fee it avoided is the one fighting on
+    would have cost: ARBITRATION_FEE if our evidence was rejected before, otherwise
+    DISPUTE_FEE. Paid: one DISPUTE_FEE per challenge sent (fees as set in the policy;
+    the sandbox doesn't charge them)."""
+    log = state.get("actions", {})
+    plans = _web(state).get("plans", {})
+    waiting = state.get("human_queue", {})
+    resolved = state.get("resolved_escalations", {})
+    avoided, paid = [], []
+    for r in sorted(rows, key=lambda r: r["case"]):
+        case, did = r["case"], r["id"]
+        history = [h for h in plans.get(case, []) if h["dispute_id"] == did]
+        rejected = history[-1].get("rejected_before", False) if history else case in state.get("rejections", {})
+        for op in log:
+            if op.startswith(f"challenge_{case}_{did}_"):
+                stage = op.rsplit("_", 1)[-1]
+                paid.append({"case": case, "fee_name": "Dispute fee", "amount": DISPUTE_FEE,
+                             "reason": f"Evidence submitted at {view.stage_title(stage)}", "counted": True})
+        if f"accept_{case}_{did}" in log:
+            fee = ARBITRATION_FEE if rejected else DISPUTE_FEE
+            if case in resolved:
+                reason = "Accepted by a person after escalation"
+            elif rejected:
+                reason = "Accepted after the bank rejected our evidence"
+            elif float(r["amount"]) <= DISPUTE_FEE:
+                reason = f"Accepted at first stage; the fee was more than the {view.money(r['amount'], r['currency'])}"
+            else:
+                reason = "Accepted at first stage"
+            avoided.append({"case": case, "amount": fee, "reason": reason, "counted": True,
+                            "fee_name": "Arbitration fee" if rejected else "Dispute fee"})
+        else:
+            reason = ("Escalated, still with a person" if case in waiting
+                      else "Open, no decision sent yet")
+            avoided.append({"case": case, "amount": 0.0, "reason": reason, "counted": False,
+                            "fee_name": "Not counted"})
+    avoided_total = sum(a["amount"] for a in avoided)
+    paid_total = sum(p["amount"] for p in paid)
+    for a in avoided:
+        a["share"] = a["amount"] / avoided_total if avoided_total else 0.0
+    at_stake = paid_total + avoided_total
+    for p in paid:
+        p["share"] = p["amount"] / at_stake if at_stake else 0.0
+    return {"avoided_total": avoided_total, "paid_total": paid_total, "at_stake": at_stake,
+            "avoided_lines": avoided, "paid_lines": paid}
+
+
+def fee_rings(f: dict, currency: str = "USD") -> dict:
+    """The fees-avoided ring and the fees-paid figure for the money section, from fees_summary()."""
+    def amt(x):
+        return f"{currency} {x:,.2f}"
+
+    def pct(x):
+        return f"{x:.0%}"
+
+    def lower1(s):                       # "Evidence submitted at RFI" -> "evidence submitted at RFI"
+        return s[:1].lower() + s[1:]
+
+    counted = [a for a in f["avoided_lines"] if a["counted"]]
+    avoided_ring = view.ring(
+        f["avoided_total"],
+        [{"value": a["amount"], "color": view.CASE_COLOR.get(a["case"], "#7c7c7c"),
+          "title": f"Case {a['case']} · {a['fee_name'].lower()} · {amt(a['amount'])} ({pct(a['share'])})",
+          "callout": {"tile": a["case"], "title": a["fee_name"], "amount": amt(a["amount"]),
+                      "pct": pct(a["share"]), "reason": a["reason"], "muted": False}} for a in counted],
+        [{"tile": a["case"], "title": "Not counted", "amount": None, "pct": None,
+          "reason": a["reason"], "muted": True} for a in f["avoided_lines"] if not a["counted"]],
+        {"top": currency, "value": f"{f['avoided_total']:,.2f}", "bottom": None},
+        f"Fees avoided {amt(f['avoided_total'])}. "
+        + " ".join(f"Case {a['case']} {a['fee_name'].lower()} {amt(a['amount'])}, {pct(a['share'])}."
+                   for a in counted)
+        + "".join(f" Case {a['case']} not counted, {lower1(a['reason'])}."
+                  for a in f["avoided_lines"] if not a["counted"]))
+    paid = f["paid_lines"]
+    return {"avoided": avoided_ring, "avoided_total": amt(f["avoided_total"]),
+            "paid_total": amt(f["paid_total"]),
+            "paid_sub": (", ".join(f"Case {p['case']} · {lower1(p['reason'])}" for p in paid)
+                         if paid else "No evidence submitted yet")}
 
 
 def run_view(case: str, run_id: str) -> dict | None:
@@ -585,6 +669,7 @@ def page() -> dict:
             "outcomes": outcome_rows,
             "totals": {"refunded": f"{refunded:,.2f}", "conceded": f"{conceded:,.2f}",
                        "fees": f"{fees:,.2f}"},
+            "fees": fee_rings(fees_summary(state, rows), rows[0]["currency"] if rows else "USD"),
             "activity": list(reversed(web.get("activity", [])))[:40],
             "fee": f"{DISPUTE_FEE:,.0f}",
             "runs": run_tabs,
