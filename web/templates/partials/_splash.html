@@ -1,40 +1,55 @@
 {% import "partials/_macros.html" as ui %}
 {# Brand splash, opened from the sidebar logo. The glass cards are the identity's illustration,
-   copied from the Logo artboard: decorative, so hidden from screen readers. Static: no motion yet. #}
+   copied from the Logo artboard: decorative, so hidden from screen readers. Each scene drifts slowly (texture and card together); off under reduced motion. #}
 <dialog id="splash" class="splash" aria-labelledby="splash-title">
   <div class="splash-art" aria-hidden="true">
-    <div class="orb" style="left: 120px; top: 96px"><div class="tex t-violet"></div>
-      <div class="pane">
-        <span class="cap">Case C · ORD-9750</span>
-        <span>Credit not processed</span>
-        <span class="pane-row"><span class="tabular">USD 340.00</span><span class="pane-pill"><i class="mark"></i>44h left</span></span>
-      </div>
+    <div class="orb" style="left: 120px; top: 96px">
+      <div class="drift-x" style="animation-delay: -4s"><div class="drift-y" style="animation-delay: -7s">
+        <div class="tex t-violet"></div>
+        <div class="pane">
+          <span class="cap">Case C · ORD-9750</span>
+          <span>Credit not processed</span>
+          <span class="pane-row"><span class="tabular">USD 340.00</span><span class="pane-pill"><i class="mark"></i>44h left</span></span>
+        </div>
+      </div></div>
     </div>
-    <div class="orb" style="right: 96px; top: 70px"><div class="tex t-cyan"></div>
-      <div class="pane">
-        <span class="cap">Evidence · Case A</span>
-        <span>4 of 5 documents attached</span>
-        <span class="pane-bar"><i style="width: 80%"></i></span>
-      </div>
+    <div class="orb" style="right: 96px; top: 70px">
+      <div class="drift-x" style="animation-delay: -9s"><div class="drift-y" style="animation-delay: -3s">
+        <div class="tex t-cyan"></div>
+        <div class="pane">
+          <span class="cap">Evidence · Case A</span>
+          <span>4 of 5 documents attached</span>
+          <span class="pane-bar"><i style="width: 80%"></i></span>
+        </div>
+      </div></div>
     </div>
-    <div class="orb" style="left: 200px; bottom: -40px"><div class="tex t-green"></div>
-      <div class="pane">
-        <span class="cap">Auto-resolved · Case B</span>
-        <span class="pane-row"><span>Accepted</span><span class="tabular">USD 18.00</span></span>
-        <span class="cap">Below the USD 25 fee to defend</span>
-      </div>
+    <div class="orb" style="left: 200px; bottom: -40px">
+      <div class="drift-x" style="animation-delay: -1s"><div class="drift-y" style="animation-delay: -12s">
+        <div class="tex t-green"></div>
+        <div class="pane">
+          <span class="cap">Auto-resolved · Case B</span>
+          <span class="pane-row"><span>Accepted</span><span class="tabular">USD 18.00</span></span>
+          <span class="cap">Below the USD 25 fee to defend</span>
+        </div>
+      </div></div>
     </div>
-    <div class="orb" style="right: 180px; bottom: 30px"><div class="tex t-rose"></div>
-      <div class="pane">
-        <span class="cap">Decision · Case A</span>
-        <span class="pane-choice"><span class="on">Challenge</span><span>Accept</span></span>
-      </div>
+    <div class="orb" style="right: 180px; bottom: 30px">
+      <div class="drift-x" style="animation-delay: -6s"><div class="drift-y" style="animation-delay: -10s">
+        <div class="tex t-rose"></div>
+        <div class="pane">
+          <span class="cap">Decision · Case A</span>
+          <span class="pane-choice"><span class="on">Challenge</span><span>Accept</span></span>
+        </div>
+      </div></div>
     </div>
-    <div class="orb" style="left: -70px; top: 380px"><div class="tex t-blue"></div>
-      <div class="pane" style="left: 68%">
-        <span class="cap">Fee per defended dispute</span>
-        <span class="pane-big tabular">USD 25</span>
-      </div>
+    <div class="orb" style="left: -70px; top: 380px">
+      <div class="drift-x" style="animation-delay: -11s"><div class="drift-y" style="animation-delay: -5s">
+        <div class="tex t-blue"></div>
+        <div class="pane" style="left: 68%">
+          <span class="cap">Fee per defended dispute</span>
+          <span class="pane-big tabular">USD 25</span>
+        </div>
+      </div></div>
     </div>
   </div>
 

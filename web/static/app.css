@@ -409,6 +409,17 @@ body.sheet-open { overflow: hidden; }
 .splash-center h1 svg { flex: none; }
 .splash-center p { max-width: 380px; color: var(--muted); }
 .splash-actions { display: flex; gap: var(--s2); }
+/* Ambient drift: texture and card float together; two wrappers, one axis each, so the path never loops visibly.
+   Transform only. Each scene sets its own negative delays inline to stay out of phase with its neighbours. */
+.drift-x { width: 100%; height: 100%;
+  animation: drift-x 12s cubic-bezier(.455, .03, .515, .955) infinite alternate; }
+.drift-y { position: relative; width: 100%; height: 100%;
+  animation: drift-y 16s cubic-bezier(.455, .03, .515, .955) infinite alternate; }
+@keyframes drift-x { from { transform: translateX(-10px); } to { transform: translateX(10px); } }
+@keyframes drift-y { from { transform: translateY(12px); } to { transform: translateY(-12px); } }
+@media (prefers-reduced-motion: reduce) {
+  .drift-x, .drift-y { animation: none; }
+}
 @media (max-width: 1000px) {
   .pane { display: none; }
   .orb { opacity: .55; }
