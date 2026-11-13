@@ -437,23 +437,59 @@ body.sheet-open { overflow: hidden; }
 .act-challenge .mark { background: var(--ink); }
 .act-accept .mark { background: var(--grey); }
 .act-escalate .mark { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); }
-.act.now { font-weight: 700; }
-.act.was, .why-line.was { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
-.act.was .mark { opacity: .5; }
-.act-flag { font-weight: 700; letter-spacing: 0; }
-.why-line { display: block; margin-top: 6px; font-size: 13px; line-height: 1.45; max-width: 46ch; color: var(--ink); }
-.why-line.muted { color: var(--muted); margin-top: 2px; }
+.act-flag { font-weight: 600; letter-spacing: 0; }
 
-.plan { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14px; }
-.plan th { padding: var(--s3) var(--s5); background: var(--hover); text-align: left; font-size: 12px; font-weight: 500;
-  color: var(--muted); white-space: nowrap; vertical-align: bottom; }
-.plan th b { display: block; font-weight: 500; color: var(--ink); }
-.plan th small { display: block; font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.plan .plan-col { width: 38%; }
-.plan td { padding: 18px var(--s5); border-top: 1px solid var(--line); vertical-align: top; }
-.plan td.who { font-weight: 500; }
-.plan tr.chg > * { background: rgba(0, 162, 199, .07); }
-.plan tr.chg > :first-child { box-shadow: inset 2px 0 0 var(--ink); }
+/* Plan comparison: v1 (retired) panel, arrow, v2 (current) panel, who approves. */
+.plancard { display: flex; flex-direction: column; gap: 20px; }
+.plancard-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2) var(--s4); }
+.plan2 { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.plan2 th { font-size: 12px; font-weight: 500; color: var(--muted); text-align: left; padding: 0 0 10px;
+  border-bottom: 1px solid var(--line); }
+.plan2 th:nth-child(1), .plan2 th:nth-child(2) { width: 38%; }
+.plan2 td { padding: var(--s4) var(--s4) 0 0; vertical-align: top; }
+.plan2 td:last-child { padding-right: 0; }
+.plan2 td.plan2-now { position: relative; }
+.pp { position: relative; height: 100%; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column;
+  gap: 14px; overflow: hidden; }
+.pp > :not(.edge) { position: relative; }
+.pp.was { background: var(--bg); border: 1px dashed #d6d6d4; }
+.pp.now { background: var(--card); border: 1px solid var(--ink); }
+.pphead { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); font-size: 12px;
+  color: var(--muted); font-variant-numeric: tabular-nums; }
+.pphead span { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 3.6px;
+  background: var(--hover); color: var(--ink); font-weight: 500; }
+.pp.now .pphead span { background: var(--ink); color: var(--bg); }
+.ppact { display: inline-flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 400; letter-spacing: -.03em;
+  line-height: 1.1; color: var(--ink); }
+.ppact i { display: inline-block; flex: none; width: 8px; height: 16px; border-radius: 0 8px 8px 0; background: var(--ink); }
+.ppact-accept i { background: var(--grey); }
+.ppact-escalate i { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
+.ppact s { text-decoration-thickness: 1.5px; text-decoration-color: var(--grey); }
+.pp.was .ppact { color: var(--grey); }
+.pp.was .ppact-challenge i { background: var(--grey); }
+.ppnums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); padding-top: 14px;
+  border-top: 1px solid var(--line); }
+.ppnums span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ppnums b { font-size: 20px; font-weight: 400; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.ppnums small { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.pp.was .ppnums b { color: var(--grey); }
+.ppwhy { font-size: 13px; line-height: 1.45; color: var(--ink); }
+.pp.was .ppwhy { color: var(--muted); }
+.pparrow { position: absolute; left: -21px; top: 50%; margin-top: -5px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink); z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center; }
+.ppwho { display: flex; align-items: center; gap: var(--s3); padding-top: 18px; }
+.ppwho-text { display: flex; flex-direction: column; min-width: 0; }
+.ppwho-name { font-weight: 500; }
+.whonode { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--card); border: 1px solid var(--line);
+  color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
+.whonode svg { stroke-width: 1.4; }
+@media (max-width: 900px) {
+  .plan2, .plan2 thead, .plan2 tbody, .plan2 tr, .plan2 td { display: block; width: 100%; }
+  .plan2 thead { display: none; }
+  .plan2 td { padding: var(--s3) 0 0; }
+  .pparrow { display: none; }
+}
 .was-note { font-weight: 400; }
 .why summary .with-tag { font-weight: 600; }
 

@@ -221,31 +221,47 @@
 </section>
 {% endmacro %}
 
-{# Initial plan vs revised plan, for this case only. #}
-{% macro plan_compare(rev) %}
-<section class="card flush" aria-labelledby="pl">
-  <div class="card-head padded">
-    <h2 id="pl" class="with-tag">Plan for this case {% if rev.changed %}{{ act("challenge", "Changed", "act-flag") }}{% else %}<span class="muted small">Unchanged</span>{% endif %}</h2>
+{# One plan version as a panel. current = the plan in force (v2); otherwise retired.
+   struck = the action word was overturned (only when the plan changed). #}
+{% macro plan_panel(p, current=False, struck=False) %}
+<div class="pp {{ 'now' if current else 'was' }}">
+  {% if current %}<span class="edge" aria-hidden="true"></span><span class="edge edge-b" aria-hidden="true"></span>{% endif %}
+  <div class="pphead"><span>v{{ p.version }}</span><time datetime="{{ p.iso }}">{{ p.at }}</time></div>
+  <span class="ppact ppact-{{ p.kind }}"><i aria-hidden="true"></i>{% if struck %}<s>{{ p.verdict }}</s>{% else %}{{ p.verdict }}{% endif %}</span>
+  <div class="ppnums">
+    {% for value, label in p.nums %}<span><b>{{ value }}</b><small>{{ label }}</small></span>{% endfor %}
+  </div>
+  <p class="ppwhy">{{ p.why }}</p>
+</div>
+{% endmacro %}
+
+{# Initial plan vs revised plan, and who approves the revised one. #}
+{% macro plan_comparison(v1, v2, approver, changed) %}
+<section class="card plancard" aria-labelledby="pl">
+  <div class="plancard-head">
+    <h2 id="pl" class="with-tag">Plan for this case {% if changed %}{{ act("challenge", "Changed", "act-flag") }}{% else %}<span class="muted small">Unchanged</span>{% endif %}</h2>
     <span class="muted small">Revised after the bank’s decision</span>
   </div>
-  <div class="table-scroll">
-    <table class="plan">
-      <thead>
-        <tr>
-          <th scope="col" class="plan-col"><b>Initial plan</b><small>v{{ rev.v1.version }} · {{ rev.v1.at }}</small></th>
-          <th scope="col" class="plan-col"><b>Revised plan</b><small>v{{ rev.v2.version }} · {{ rev.v2.at }}</small></th>
-          <th scope="col">Who approves</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr {% if rev.changed %}class="chg"{% endif %}>
-          <td>{{ act(rev.v1.kind, rev.v1.action, "was" if rev.changed else "") }}<span class="why-line {% if rev.changed %}was{% endif %}">{{ rev.v1.line }}</span></td>
-          <td>{{ act(rev.v2.kind, rev.v2.action, "now") }}<span class="why-line">{{ rev.v2.line }}</span></td>
-          <td class="who">{{ rev.who }}<span class="why-line muted">{{ rev.who_why }}</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <table class="plan2">
+    <thead>
+      <tr><th scope="col">Initial plan</th><th scope="col">Revised plan</th><th scope="col">Who approves</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ plan_panel(v1, current=False, struck=changed) }}</td>
+        <td class="plan2-now">
+          <span class="pparrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></span>
+          {{ plan_panel(v2, current=True) }}
+        </td>
+        <td>
+          <div class="ppwho">
+            <span class="whonode" aria-hidden="true">{{ icon("check" if approver.auto else "person", 21) }}</span>
+            <span class="ppwho-text"><span class="ppwho-name">{{ approver.name }}</span><span class="muted small">{{ approver.why }}</span></span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </section>
 {% endmacro %}
 

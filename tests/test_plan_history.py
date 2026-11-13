@@ -57,14 +57,46 @@ def test_revision_shows_both_plans_with_their_numbers():
     assert rev["changed"]
     assert (rev["v1"]["action"], rev["v1"]["version"]) == ("CHALLENGE", 1)
     assert (rev["v2"]["action"], rev["v2"]["version"]) == ("ACCEPT", 2)
-    assert rev["v1"]["line"] == "85% win chance; expected cost 211.00 vs 1,240.00 to accept."
-    assert rev["v2"]["line"] == ("Evidence rejected, now at Chargeback. Win chance 34%, under the "
-                                 "50% minimum; challenging is expected to cost 1,318.40 vs 1,240.00 "
-                                 "to accept.")
-    assert (rev["who"], rev["who_why"]) == ("You", "Over USD 50")
+    assert rev["v1"]["nums"] == [("85%", "win chance"), ("211.00", "expected cost to challenge")]
+    assert rev["v2"]["nums"] == [("34%", "win chance · min 50%"),
+                                 ("1,318.40", "to challenge vs 1,240.00 to accept")]
+    assert rev["v1"]["why"] == "Fighting is expected to cost less than refunding 1,240.00."
+    assert rev["v2"]["why"] == ("Evidence rejected, now at Chargeback. "
+                                "Fighting on is expected to cost more than refunding.")
+    assert rev["approver"] == {"name": "You", "why": "Over USD 50, so a person approves", "auto": False}
     assert rev["bank"] == {"at": T_BANK, "time": "09:12", "date": "12 Nov 2026, 09:12",
                            "from_stage": "RFI", "stage": "Chargeback"}
     assert rev["v2"]["at"] == "12 Nov, 09:14" and rev["agent_time"] == "09:14"
+
+
+def test_small_amounts_are_approved_automatically():
+    s = {"action": "ACCEPT", "needs_human": False, "currency": "USD", "amount": 18.0}
+    assert view.plan_who(s) == {"name": "Automatic", "why": "Under USD 50, approved by the rules",
+                                "auto": True}
+
+
+def _render(rev) -> str:
+    from jinja2 import Environment, FileSystemLoader
+    env = Environment(loader=FileSystemLoader("web/templates"))
+    ui = env.get_template("partials/_macros.html").module
+    return str(ui.plan_comparison(rev["v1"], rev["v2"], rev["approver"], rev["changed"]))
+
+
+def test_plan_card_strikes_only_the_retired_action_word():
+    html = _render(view.revision(history_after_rejection(), REJECTION))
+    assert [h for h in ("Initial plan", "Revised plan", "Who approves") if f">{h}</th>" in html] == \
+        ["Initial plan", "Revised plan", "Who approves"]
+    assert html.count("<s>") == 1 and "<s>Challenge</s>" in html
+    was, now = html.split('class="pp now"')
+    assert "Fighting is expected to cost less" in was and "<s>" not in was.split('class="ppwhy"')[1]
+    assert 'class="edge"' in now and "1,318.40" in now and "211.00" in was
+    assert "Changed" in html and "Unchanged" not in html
+
+
+def test_unchanged_plan_strikes_nothing():
+    rev = view.revision(history_after_rejection(), REJECTION)
+    html = _render({**rev, "changed": False})
+    assert "<s>" not in html and "Unchanged" in html
 
 
 def test_no_revision_without_news_or_without_a_second_plan():

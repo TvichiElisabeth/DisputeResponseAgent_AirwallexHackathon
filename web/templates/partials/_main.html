@@ -184,7 +184,7 @@
       {% set rev = c.revision if c else None %}
       {% if rev %}
       {{ ui.bank_news(rev) }}
-      {{ ui.plan_compare(rev) }}
+      {{ ui.plan_comparison(rev.v1, rev.v2, rev.approver, rev.changed) }}
       {% endif %}
 
       <div class="case-cols">

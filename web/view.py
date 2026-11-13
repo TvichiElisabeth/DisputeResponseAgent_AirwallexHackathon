@@ -191,37 +191,52 @@ def stage_title(stage: str) -> str:
     return stage if stage == "RFI" else stage_label(stage).capitalize()
 
 
-def plan_line(s: dict, after_rejection: bool = False) -> str:
-    """One line of reasoning with the numbers, for a plan snapshot."""
-    p, ca, cc = pct(s["p_win"]), f"{s['cost_accept']:,.2f}", f"{s['cost_challenge']:,.2f}"
+def plan_why(s: dict, after_rejection: bool = False) -> str:
+    """One short line of reasoning for a plan snapshot. The numbers sit above it
+    in the panel, so the line doesn't repeat them."""
+    ca = f"{s['cost_accept']:,.2f}"
     lead = f"Evidence rejected, now at {stage_title(s['stage'])}. " if after_rejection else ""
+    on = " on" if after_rejection else ""
     if s["action"] == "CHALLENGE":
-        return f"{lead}{p} win chance; expected cost {cc} vs {ca} to accept."
+        return f"{lead}Fighting{on} is expected to cost less than refunding {ca}."
     if s["action"] == "ACCEPT":
-        req = s.get("required_p")
-        if req is not None and s["p_win"] < req:
-            return (f"{lead}Win chance {p}, under the {pct(req)} minimum; challenging is "
-                    f"expected to cost {cc} vs {ca} to accept.")
-        return f"{lead}Accepting costs {ca}; challenging is expected to cost {cc}."
+        if s["cost_challenge"] > s["cost_accept"]:
+            return f"{lead}Fighting{on} is expected to cost more than refunding."
+        return f"{lead}The win chance is under the minimum needed to fight."
     return f"{lead}A person decides: the rules say this isn't the agent's call."
 
 
-def plan_who(s: dict) -> tuple[str, str]:
+def plan_nums(s: dict) -> list[tuple[str, str]]:
+    """The two key numbers of a plan, as (value, label)."""
+    p, ca, cc = pct(s["p_win"]), f"{s['cost_accept']:,.2f}", f"{s['cost_challenge']:,.2f}"
+    if s["action"] == "CHALLENGE":
+        return [(p, "win chance"), (cc, "expected cost to challenge")]
+    if s["action"] == "ACCEPT":
+        req = s.get("required_p")
+        return [(p, f"win chance · min {pct(req)}" if req is not None else "win chance"),
+                (cc, f"to challenge vs {ca} to accept")]
+    return [(p, "win chance"), (f"{s['amount']:,.2f}", "at stake")]
+
+
+def plan_who(s: dict) -> dict:
     """Who approves this plan, and the one-line reason (the policy's own rule)."""
+    limit = f"{s['currency']} {AUTO_APPROVE_LIMIT:,.0f}"
     if s["action"] == "ESCALATE":
-        return "A person", "Escalated by the rules"
+        return {"name": "A person", "why": "Escalated by the rules", "auto": False}
     if not s["needs_human"]:
-        return "Automatic", f"Under {s['currency']} {AUTO_APPROVE_LIMIT:,.0f}"
+        return {"name": "Automatic", "why": f"Under {limit}, approved by the rules", "auto": True}
     if s["amount"] > AUTO_APPROVE_LIMIT:
-        return "You", f"Over {s['currency']} {AUTO_APPROVE_LIMIT:,.0f}"
-    return "You", "After a bank rejection" if s.get("rejected_before") else "Policy rule"
+        return {"name": "You", "why": f"Over {limit}, so a person approves", "auto": False}
+    why = "After a bank rejection, so a person approves" if s.get("rejected_before") \
+        else "A policy rule asks for a person"
+    return {"name": "You", "why": why, "auto": False}
 
 
 def plan_cell(s: dict, version: int, after_rejection: bool = False) -> dict:
-    return {"version": version, "at": stamp(s["at"]), "action": s["action"],
-            "kind": ACT_KIND[s["action"]], "line": plan_line(s, after_rejection),
-            "p_win": pct(s["p_win"]), "cost_challenge": f"{s['cost_challenge']:,.2f}",
-            "verdict": VERDICT[s["action"]]}
+    return {"version": version, "at": stamp(s["at"]), "iso": s["at"], "action": s["action"],
+            "kind": ACT_KIND[s["action"]], "why": plan_why(s, after_rejection),
+            "nums": plan_nums(s), "p_win": pct(s["p_win"]),
+            "cost_challenge": f"{s['cost_challenge']:,.2f}", "verdict": VERDICT[s["action"]]}
 
 
 def revision(history: list[dict], rejection: dict | None) -> dict | None:
@@ -236,10 +251,9 @@ def revision(history: list[dict], rejection: dict | None) -> dict | None:
         return None
     i, j = before[-1], after[-1]
     v1, v2 = history[i], history[j]
-    who, why = plan_who(v2)
     return {
         "v1": plan_cell(v1, i + 1), "v2": plan_cell(v2, j + 1, after_rejection=True),
-        "changed": v1["action"] != v2["action"], "who": who, "who_why": why,
+        "changed": v1["action"] != v2["action"], "approver": plan_who(v2),
         "bank": {"at": rejection["at"], "time": clock(rejection["at"]),
                  "date": stamp(rejection["at"], year=True),
                  "from_stage": stage_title(rejection.get("from_stage") or v1["stage"]),
