@@ -13,7 +13,7 @@
 <body>
   {% block content %}{% endblock %}
 
-  <!-- Shown while a review runs: the agent's steps, one after another. -->
+  <!-- Shown while a review runs: the agent's real steps, as each one finishes. -->
   <div id="review-overlay" class="overlay" hidden>
     <div class="overlay-card" role="status" aria-live="polite">
       <div class="overlay-head">
@@ -23,6 +23,9 @@
       <ol class="steps" id="review-steps"></ol>
     </div>
   </div>
+
+  <!-- The agent run drawer. Outside #main, so a page re-draw never closes it. -->
+  <div id="run-root"></div>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
@@ -51,7 +54,9 @@
       if (opener) { openSheet(opener.dataset.sheet, opener); return; }
       if (e.target.closest("[data-sheet-close]") || e.target.classList.contains("scrim")) closeSheets();
     });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheets(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !document.querySelector("#run-root .rundrawer")) closeSheets();
+    });
     document.addEventListener("htmx:afterSwap", () => document.body.classList.remove("sheet-open"));
 
     // ---- Brand splash: the sidebar logo opens it; Esc, Close or "Open the queue" closes it ----
@@ -66,7 +71,7 @@
     //      form still submits every checkbox and the reply. ----
     document.addEventListener("click", (e) => {
       const tab = e.target.closest("[role=tab]");
-      if (!tab) return;
+      if (!tab || !tab.getAttribute("aria-controls")) return;   // run tabs load from the server
       const list = tab.closest("[role=tablist]");
       list.querySelectorAll("[role=tab]").forEach(t => {
         const on = t === tab;
@@ -111,42 +116,104 @@
       });
     });
 
-    // ---- Review progress: lists the agent's steps while the request runs ----
-    let stepTimer = null;
-    function startReview() {
-      const main = document.getElementById("main");
-      let cases = [];
-      try { cases = JSON.parse(main?.dataset.steps || "[]"); } catch (_) {}
-      const steps = ["Reading the dispute queue from Airwallex"];
-      cases.forEach(c => {
-        steps.push(`Case ${c.case} · reading the evidence (${c.product.toLowerCase()})`);
-        steps.push(`Case ${c.case} · win chance vs. break-even, then the rules`);
-      });
-      steps.push("Writing the explanations and preparing approvals");
+    // ---- Review progress: the review runs in the background on the server; this
+    //      polls its real steps (each finished tool call and model turn) every 500 ms,
+    //      then re-draws the page. Polling, not a stream: it works the same through
+    //      CloudFront, a load balancer and several containers. ----
+    let polling = null;
+    function renderSteps(steps, running) {
+      const esc = (s) => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+      const rows = steps.map(s => `<li class="${s.error ? "done is-error" : "done"}"><span class="step-icon"></span><span>${esc(s.label)}</span></li>`);
+      if (running) rows.push(`<li class="active"><span class="step-icon"></span><span>${steps.length ? "Working…" : "Starting the agent…"}</span></li>`);
       const list = document.getElementById("review-steps");
-      list.innerHTML = steps.map(s => `<li><span class="step-icon"></span><span>${s}</span></li>`).join("");
-      const items = [...list.children];
-      let i = 0;
-      items[0].classList.add("active");
-      clearInterval(stepTimer);
-      stepTimer = setInterval(() => {
-        if (i >= items.length - 1) return;           // the last step waits for the server
-        items[i].classList.replace("active", "done");
-        items[++i].classList.add("active");
-      }, 1100);
+      list.innerHTML = rows.join("");
+      list.lastElementChild?.scrollIntoView({block: "nearest"});
+    }
+    function redraw() {
+      return htmx.ajax("GET", location.pathname + location.search, {target: "#main", select: "#main", swap: "outerHTML"})
+        .catch(() => location.reload());
+    }
+    function followReview(id) {
+      if (polling === id) return;
+      polling = id;
       document.getElementById("review-overlay").hidden = false;
+      renderSteps([], true);
+      const tick = async () => {
+        if (polling !== id) return;
+        let job;
+        try {
+          const r = await fetch(`/review/${id}/progress`, {cache: "no-store"});
+          if (!r.ok) throw new Error(r.status);
+          job = await r.json();
+        } catch (_) { setTimeout(tick, 1500); return; }      // brief network blip: keep trying
+        renderSteps(job.steps, job.status === "running");
+        if (job.status === "running") { setTimeout(tick, 500); return; }
+        polling = null;
+        if (job.status === "error") toast("The review stopped: " + job.error);
+        await redraw();
+        document.getElementById("review-overlay").hidden = true;
+      };
+      tick();
     }
-    function stopReview() {
-      clearInterval(stepTimer);
-      document.getElementById("review-overlay").hidden = true;
-    }
-
-    let lastPath = "";
-    document.addEventListener("htmx:beforeRequest", (e) => {
-      lastPath = e.detail.pathInfo?.requestPath || "";
-      if (lastPath === "/review") startReview();
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-review]");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        const r = await fetch("/review", {method: "POST"});
+        if (!r.ok) throw new Error(r.status);
+        followReview((await r.json()).id);
+      } catch (_) { btn.disabled = false; toast("Couldn't start the review."); }
     });
-    document.addEventListener("htmx:afterRequest", () => { if (lastPath === "/review") stopReview(); });
+    // A review already running (page reloaded, or someone else started it): follow it.
+    function resumeReview() {
+      const id = document.getElementById("main")?.dataset.reviewing;
+      if (id) followReview(id);
+    }
+    document.addEventListener("DOMContentLoaded", resumeReview);
+    document.addEventListener("htmx:afterSwap", resumeReview);
+
+    // ---- Agent run drawer: opened from "View agent run" / "See what the agent did".
+    //      The server renders one run; tabs load another; spans select in place. ----
+    let runOpener = null;
+    const runRoot = () => document.getElementById("run-root");
+    async function loadRun(url) {
+      const r = await fetch(url, {cache: "no-store"});
+      runRoot().innerHTML = await r.text();
+      document.body.classList.add("sheet-open");
+      (runRoot().querySelector(".runtab[aria-selected=true]") || runRoot().querySelector(".rundrawer"))?.focus();
+    }
+    function closeRun() {
+      if (!runRoot().innerHTML) return;
+      runRoot().innerHTML = "";
+      document.body.classList.remove("sheet-open");
+      if (runOpener && document.body.contains(runOpener)) runOpener.focus();
+    }
+    document.addEventListener("click", (e) => {
+      const opener = e.target.closest("[data-run]");
+      if (opener) {
+        if (!opener.closest("#run-root")) runOpener = opener;   // tabs keep the original opener
+        loadRun(opener.dataset.run).catch(() => toast("Couldn't load the agent run."));
+        return;
+      }
+      if (e.target.closest("[data-run-close]")) { closeRun(); return; }
+      const span = e.target.closest("[data-span]");
+      if (span) {
+        const drawer = span.closest(".rundrawer");
+        drawer.querySelectorAll("[data-span]").forEach(b => b.setAttribute("aria-pressed", b === span));
+        drawer.querySelectorAll("[data-span-detail]").forEach(d => d.hidden = d.dataset.spanDetail !== span.dataset.span);
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { closeRun(); return; }
+      // keep Tab inside the open drawer
+      const drawer = runRoot().querySelector(".rundrawer");
+      if (e.key !== "Tab" || !drawer) return;
+      const f = [...drawer.querySelectorAll("button, [href], [tabindex]:not([tabindex='-1'])")].filter(x => !x.hidden && x.offsetParent);
+      if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
 
     // ---- Show server or network errors instead of failing silently ----
     function toast(msg) {

@@ -1,5 +1,6 @@
 """Display data for the templates. Every number comes from the policy or Airwallex;
 this module only formats it. No decisions are made here."""
+import json
 import re
 from datetime import datetime, timezone
 
@@ -234,6 +235,7 @@ def plan_who(s: dict) -> dict:
 
 def plan_cell(s: dict, version: int, after_rejection: bool = False) -> dict:
     return {"version": version, "at": stamp(s["at"]), "iso": s["at"], "action": s["action"],
+            "run_id": s.get("run_id"),
             "kind": ACT_KIND[s["action"]], "why": plan_why(s, after_rejection),
             "nums": plan_nums(s), "p_win": pct(s["p_win"]),
             "cost_challenge": f"{s['cost_challenge']:,.2f}", "verdict": VERDICT[s["action"]]}
@@ -275,3 +277,95 @@ def revised_nodes(rev: dict, flags, reason_type: str = "") -> list[dict]:
     agent = {"who": "Dispute Desk agent", "kind": "agent", "new": True, "weight": "agent",
              "when": f"Read everything again · {rev['agent_time']}", "facts": agent_facts, "text": ""}
     return [bank, agent]
+
+
+# ---------------- agent runs (the drawer on the case page) ----------------
+
+KIND_LABEL = {"invoke_agent": "invoke_agent", "execute_tool": "execute_tool", "chat": "chat"}
+
+
+def case_spans(spans: list[dict], case: str) -> list[dict]:
+    """This case's spans plus the shared ones (the agent span, model turns,
+    list_open_disputes, submit_plan): spans with no case belong to every case."""
+    return [s for s in spans if s.get("case") in (None, case)]
+
+
+def duration(seconds: float | None) -> str:
+    if seconds is None:
+        return "—"
+    if seconds < 1:
+        return f"{seconds * 1000:.0f} ms"
+    if seconds < 60:
+        return f"{seconds:.1f} s"
+    return f"{int(seconds // 60)} m {seconds % 60:02.0f} s"
+
+
+def pretty(value) -> str:
+    """A span's stored input/output, pretty-printed when it's JSON."""
+    if value is None:
+        return "—"
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return value
+    return json.dumps(value, indent=2, ensure_ascii=False)
+
+
+def run_versions(history: list[dict]) -> dict[str, int]:
+    """run_id -> the plan version it produced, for one case."""
+    return {h["run_id"]: i + 1 for i, h in enumerate(history) if h.get("run_id")}
+
+
+def run_tabs(runs: list[dict], history: list[dict], case: str) -> list[dict]:
+    """One tab per kept run that reviewed this case, oldest first."""
+    versions = run_versions(history)
+    tabs = []
+    for r in runs:
+        if case not in (r.get("outcomes") or {}):
+            continue
+        v = versions.get(r["id"])
+        when = stamp(r.get("started_at") or r["at"])
+        tabs.append({"id": r["id"], "version": v, "steps": len(case_spans(r.get("spans", []), case)),
+                     "label": f"Run v{v} · {when}" if v else f"Run · {when}"})
+    return tabs
+
+
+def disagreements_for(run: dict, case: str) -> list[dict]:
+    """Where the model's proposal for this case differed from the policy, as two
+    sides and what the code did about it (the policy applies; a person approves)."""
+    out = []
+    for it in run.get("plan_items", []):
+        if it.get("case") != case or it.get("agrees", True):
+            continue
+        out.append({"a": "Agent proposed", "av": f"{VERDICT.get(it['action'], it['action'])}. {it.get('reason', '')}".strip(),
+                    "b": "Policy (code)",
+                    "bv": f"{VERDICT.get(it['policy_action'], it['policy_action'])}, from the verified facts",
+                    "res": "The policy applies, and a person must approve before anything moves."})
+    return out
+
+
+def agent_run(run: dict, case: str) -> dict:
+    """Everything the drawer shows for one run, for one case."""
+    spans = case_spans(run.get("spans", []), case)
+    total = run.get("duration_s") or max((s["start_s"] + s["dur_s"] for s in spans), default=0) or 1
+    action = (run.get("outcomes") or {}).get(case)
+    rows = []
+    for s in spans:
+        left = max(0.0, min(s["start_s"] / total, 1.0)) * 100
+        width = max(min(s["dur_s"] / total * 100, 100 - left), 0.6)
+        rows.append({
+            "id": s["id"], "name": s["name"], "kind": s["kind"], "depth": s.get("depth", 0),
+            "case": s.get("case"), "error": s.get("error", False),
+            "dur": duration(s["dur_s"]), "started": f"+{duration(s['start_s'])}" if s["start_s"] else "0 ms",
+            "bar_left": round(left, 2), "bar_width": round(width, 2),
+            "input": pretty(s.get("input")), "output": pretty(s.get("output")),
+        })
+    return {
+        "id": run["id"], "case": case, "trigger": run.get("trigger") or "—",
+        "duration": duration(run.get("duration_s")), "steps": len(spans),
+        "model": run.get("model") or "—", "summary": run.get("summary") or "The model submitted no plan summary.",
+        "finished": run.get("finished"), "stop": run.get("stop", ""),
+        "outcome": VERDICT.get(action, "—") if action else "—", "outcome_kind": ACT_KIND.get(action, "none"),
+        "disagreements": disagreements_for(run, case), "spans": rows,
+    }

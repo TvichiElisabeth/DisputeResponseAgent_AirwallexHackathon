@@ -1,0 +1,98 @@
+{# The agent run drawer: one stored run, for one case. Loaded on demand by
+   GET /cases/{case}/runs/{run_id}; base.html opens, switches and closes it. #}
+{% import "partials/_macros.html" as ui %}
+{% set run = r.run %}
+{% macro mark() -%}
+<svg width="70%" height="70%" viewBox="6 6 20 20" aria-hidden="true"><rect x="15.25" y="8" width="1.5" height="16" fill="currentColor"/><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="currentColor"/><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+{%- endmacro %}
+{% macro node(kind) -%}
+{% if kind == "invoke_agent" %}<span class="arnode ar-agent" aria-hidden="true">{{ mark() }}</span>
+{% elif kind == "chat" %}<span class="arnode ar-chat" aria-hidden="true">{{ ui.icon("chat", 14) }}</span>
+{% else %}<span class="arnode ar-tool" aria-hidden="true">{{ ui.icon("wrench", 14) }}</span>{% endif %}
+{%- endmacro %}
+
+<button type="button" class="runscrim" aria-label="Close agent run" data-run-close tabindex="-1"></button>
+<aside class="rundrawer" role="dialog" aria-modal="true" aria-labelledby="ar-title" tabindex="-1">
+  <div class="ar-head">
+    <h2 id="ar-title" class="ar-title"><span class="arnode ar-agent ar-big" aria-hidden="true">{{ mark() }}</span>Agent run</h2>
+    <div class="ar-tools">
+      <div role="tablist" aria-label="Agent runs for this case" class="runtabs">
+        {% for t in r.tabs %}
+        <button type="button" role="tab" class="runtab" aria-selected="{{ 'true' if t.id == r.selected else 'false' }}"
+                data-run="/cases/{{ r.case }}/runs/{{ t.id }}">{{ t.label }}</button>
+        {% endfor %}
+      </div>
+      <button type="button" class="xbtn" aria-label="Close agent run" data-run-close>{{ ui.icon("close", 18) }}</button>
+    </div>
+  </div>
+  <p class="ar-sub">Case {{ r.case }} · everything the agent read, called and decided in this run.</p>
+
+  <dl class="arstats">
+    <div><dt>Trigger</dt><dd>{{ run.trigger }}</dd></div>
+    <div><dt>Duration</dt><dd>{{ run.duration }}</dd></div>
+    <div><dt>Steps</dt><dd>{{ run.steps }}</dd></div>
+    <div><dt>Model</dt><dd class="ar-model">{{ run.model }}</dd></div>
+    <div><dt>Outcome</dt><dd>{{ ui.act(run.outcome_kind, run.outcome, "ar-outcome") }}</dd></div>
+  </dl>
+  {% if not run.finished %}<p class="ar-warn">The run ended without a plan ({{ run.stop }}). The policy decided from the fixed reader, and a person approves.</p>{% endif %}
+
+  <div class="arsum">
+    <div>
+      <h3 class="arh">Plan summary</h3>
+      <p class="ar-text">{{ run.summary }}</p>
+    </div>
+    <div>
+      <h3 class="arh">Disagreements <span class="muted">{{ run.disagreements | length }}</span></h3>
+      {% if run.disagreements %}
+      <ul class="dislist">
+        {% for d in run.disagreements %}
+        <li class="dis">
+          <span class="disrow"><span class="dislab">{{ d.a }}</span><span>{{ d.av }}</span></span>
+          <span class="disrow"><span class="dislab">{{ d.b }}</span><span>{{ d.bv }}</span></span>
+          <span class="disrow res"><span class="dislab">Resolved</span><span>{{ d.res }}</span></span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted ar-text">The agent’s proposal for Case {{ r.case }} matched the policy.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="trace">
+    <div class="spans">
+      <div class="spanshead"><span>Tool-call trace</span><span class="mono">{{ run.duration }}</span></div>
+      <ol class="spanlist">
+        {% for s in run.spans %}
+        <li>
+          <button type="button" class="spanbtn {% if s.error %}is-error{% endif %}" data-span="{{ s.id }}"
+                  aria-pressed="{{ 'true' if loop.first else 'false' }}" style="padding-left: {{ 10 + s.depth * 24 }}px">
+            {{ node(s.kind) }}
+            <span class="spanmain">
+              <span class="spantop"><span class="spanname">{{ s.name }}</span>{% if s.case %}<span class="spancase">Case {{ s.case }}</span>{% endif %}<span class="spankind">{{ s.kind }}</span><span class="spandur">{{ s.dur }}</span></span>
+              <span class="spantrack"><span class="spanbar bar-{{ s.kind }}" style="left: {{ s.bar_left }}%; width: {{ s.bar_width }}%"></span></span>
+            </span>
+          </button>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    <div class="spandetail" aria-live="polite">
+      {% for s in run.spans %}
+      <section data-span-detail="{{ s.id }}" {% if not loop.first %}hidden{% endif %}>
+        <div class="sd-head">{{ node(s.kind) }}<span class="mono sd-name">{{ s.name }}</span>{% if s.error %}<span class="tag tag-against"><i class="mark" aria-hidden="true"></i>Refused</span>{% endif %}</div>
+        <div class="sd-dur">{{ s.dur }}</div>
+        <dl class="sd-meta">
+          <div><dt>Kind</dt><dd class="mono">{{ s.kind }}</dd></div>
+          <div><dt>Started</dt><dd class="mono">{{ s.started }}</dd></div>
+          <div><dt>Span ID</dt><dd class="mono">{{ s.id }}</dd></div>
+        </dl>
+        <h4 class="sd-h">Input</h4>
+        <pre class="sd-code">{{ s.input }}</pre>
+        <h4 class="sd-h">Output</h4>
+        <pre class="sd-code">{{ s.output }}</pre>
+      </section>
+      {% endfor %}
+    </div>
+  </div>
+</aside>

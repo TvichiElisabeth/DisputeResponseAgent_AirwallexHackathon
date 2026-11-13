@@ -11,6 +11,26 @@
 </button>
 {% endmacro %}
 
+{# Starts a background review; base.html shows the agent's real steps as they finish. #}
+{% macro review_button(label="Review open disputes") %}
+<button type="button" class="btn btn-primary" data-review><span>{{ label }}</span></button>
+{% endmacro %}
+
+{# Opens the agent run drawer for one run. #}
+{% macro run_button(case, p) %}
+{% if p.run_id %}
+<button type="button" class="seerun" data-run="/cases/{{ case }}/runs/{{ p.run_id }}" aria-haspopup="dialog">
+  {{ icon("trace", 16) }}<span>View agent run</span>{% if p.steps %}<span class="seecount">{{ p.steps }} steps</span>{% endif %}{{ icon("arrow", 16, "seearr") }}
+</button>
+{% endif %}
+{% endmacro %}
+
+{% macro run_link(case, run) %}
+{% if run %}
+<button type="button" class="seelink" data-run="/cases/{{ case }}/runs/{{ run.id }}" aria-haspopup="dialog">See what the agent did{{ icon("arrow", 14, "seearr") }}</button>
+{% endif %}
+{% endmacro %}
+
 {# A status label: a small half-capsule mark plus text. kind: challenge | accept | needs | done | none #}
 {% macro pill(text, kind) %}<span class="pill pill-{{ kind }}"><i class="mark" aria-hidden="true"></i>{{ text }}</span>{% endmacro %}
 
@@ -37,8 +57,8 @@
   {% endif %}
 {% endmacro %}
 
-{% macro icon(name, size=20) -%}
-<svg viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{% macro icon(name, size=20, cls="") -%}
+<svg viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" {% if cls %}class="{{ cls }}"{% endif %} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 {%- if name == "person" %}<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>
 {%- elif name == "list" %}<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>
 {%- elif name == "check" %}<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>
@@ -47,6 +67,10 @@
 {%- elif name == "search" %}<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
 {%- elif name == "lock" %}<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
 {%- elif name == "back" %}<path d="M15 18l-6-6 6-6"/>
+{%- elif name == "arrow" %}<path d="M4 12h16M14 6l6 6-6 6"/>
+{%- elif name == "trace" %}<path d="M4 6h10M7 12h10M10 18h10"/><circle cx="4" cy="6" r=".6"/><circle cx="7" cy="12" r=".6"/><circle cx="10" cy="18" r=".6"/>
+{%- elif name == "wrench" %}<path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17v3h3l5.2-5.2a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.5-.5-.5-2.5z"/>
+{%- elif name == "chat" %}<path d="M4 5h16v11H10l-6 4z"/>
 {%- elif name == "receipt" %}<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>
 {%- elif name == "bank" %}<path d="M3 9l9-5 9 5"/><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20h18"/>
 {%- elif name == "close" %}<path d="M6 6l12 12M18 6L6 18"/>
@@ -202,7 +226,7 @@
 {% endmacro %}
 
 {# The bank's new information and the agent's reaction, at the top of the case page. #}
-{% macro bank_news(rev) %}
+{% macro bank_news(rev, latest_run=None) %}
 <section class="card glowcard" aria-labelledby="nb">
   <span class="edge" aria-hidden="true"></span><span class="edge edge-b" aria-hidden="true"></span>
   <div class="card-head">
@@ -218,12 +242,13 @@
                 "aside": ("The plan moves from " ~ rev.v1.verdict ~ " to " ~ rev.v2.verdict ~ ".") if rev.changed else "The plan stays " ~ rev.v2.verdict ~ "."},
                meta="Agent · " ~ rev.agent_time) }}
   </ol>
+  {% if latest_run %}<div class="bank-news-run">{{ run_link(rev.case, latest_run) }}</div>{% endif %}
 </section>
 {% endmacro %}
 
 {# One plan version as a panel. current = the plan in force (v2); otherwise retired.
    struck = the action word was overturned (only when the plan changed). #}
-{% macro plan_panel(p, current=False, struck=False) %}
+{% macro plan_panel(p, current=False, struck=False, case="") %}
 <div class="pp {{ 'now' if current else 'was' }}">
   {% if current %}<span class="edge" aria-hidden="true"></span><span class="edge edge-b" aria-hidden="true"></span>{% endif %}
   <div class="pphead"><span>v{{ p.version }}</span><time datetime="{{ p.iso }}">{{ p.at }}</time></div>
@@ -232,15 +257,16 @@
     {% for value, label in p.nums %}<span><b>{{ value }}</b><small>{{ label }}</small></span>{% endfor %}
   </div>
   <p class="ppwhy">{{ p.why }}</p>
+  {{ run_button(case, p) }}
 </div>
 {% endmacro %}
 
 {# Initial plan vs revised plan, and who approves the revised one. #}
-{% macro plan_comparison(v1, v2, approver, changed) %}
+{% macro plan_comparison(v1, v2, approver, changed, case) %}
 <section class="card plancard" aria-labelledby="pl">
   <div class="plancard-head">
     <h2 id="pl" class="with-tag">Plan for this case {% if changed %}{{ act("challenge", "Changed", "act-flag") }}{% else %}<span class="muted small">Unchanged</span>{% endif %}</h2>
-    <span class="muted small">Revised after the bank’s decision</span>
+    <span class="muted small">Revised after the bank’s decision · open a plan’s agent run to see every tool call</span>
   </div>
   <table class="plan2">
     <thead>
@@ -248,10 +274,10 @@
     </thead>
     <tbody>
       <tr>
-        <td>{{ plan_panel(v1, current=False, struck=changed) }}</td>
+        <td>{{ plan_panel(v1, current=False, struck=changed, case=case) }}</td>
         <td class="plan2-now">
           <span class="pparrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></span>
-          {{ plan_panel(v2, current=True) }}
+          {{ plan_panel(v2, current=True, case=case) }}
         </td>
         <td>
           <div class="ppwho">

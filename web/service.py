@@ -25,6 +25,7 @@ from merchant.drafter import check_draft
 from merchant.policy import CHALLENGE, DISPUTE_FEE, ESCALATE, Decision, EvidenceFlags
 from merchant.queue import read_queue
 from merchant.record_payments import record_payments
+from records import progress
 from records import state as st
 from records.evidence_text import (BANK_CLAIM_SOURCE, BANK_CLAIMS, EVIDENCE, EVIDENCE_THREAD,
                                    ORDERS)
@@ -174,19 +175,36 @@ def _snapshot(it: dict, at: str, rejected: bool) -> dict:
             "proposed": agent_note.get("proposed"), "disagrees": bool(agent_note.get("disagrees"))}
 
 
-def record_plans(w: dict, items: list[dict], at: str, rejections: dict) -> None:
+def record_plans(w: dict, items: list[dict], at: str, rejections: dict,
+                 run_id: str | None = None) -> None:
     """Append one plan version per reviewed case. Kept across the bank's rejection,
     so the page can show the initial plan next to the revised one. A review that
-    decides the same thing again adds nothing; a new dispute starts a new history."""
+    decides the same thing again adds nothing; a new dispute starts a new history.
+    run_id links each new version to the agent run that produced it."""
     plans = w.setdefault("plans", {})
     for it in items:
         case = it["decision"].case
-        snap = _snapshot(it, at, case in rejections)
+        snap = {**_snapshot(it, at, case in rejections), "run_id": run_id}
         history = [h for h in plans.get(case, []) if h["dispute_id"] == snap["dispute_id"]]
         last = history[-1] if history else None
         if last and all(last[k] == snap[k] for k in ("action", "stage", "p_win")):
             continue
         plans[case] = history + [snap]
+
+
+RUNS_KEPT = 4    # besides runs a plan version points to; keeps the state item small
+
+
+def record_run(w: dict, run_info: dict, at: str) -> None:
+    """Keep the agent run (spans, plan, disagreements) for the case page's drawer.
+    Kept: every run a plan version points to, plus the latest few."""
+    if not run_info.get("id"):
+        return
+    runs = w.setdefault("runs", [])
+    runs.append({**{k: v for k, v in run_info.items() if k != "trace"}, "at": at})
+    linked = {h.get("run_id") for hist in w.get("plans", {}).values() for h in hist}
+    latest = {r["id"] for r in runs[-RUNS_KEPT:]}
+    w["runs"] = [r for r in runs if r["id"] in linked or r["id"] in latest]
 
 
 # ---------------- actions ----------------
@@ -201,7 +219,8 @@ def seed() -> None:
         except ActionError as e:
             _notice(str(e), "error")
             return
-        _update_web(lambda w: (w.pop("review", None), w.pop("outcomes", None), w.pop("plans", None)))
+        _update_web(lambda w: (w.pop("review", None), w.pop("outcomes", None), w.pop("plans", None),
+                               w.pop("runs", None)))
         _notice("Payments recorded and disputes opened. Run a review next.", "ok")
 
 
@@ -218,14 +237,30 @@ def reject_a() -> None:
         _notice("The issuing bank rejected Case A's evidence. Review the queue again.", "info")
 
 
+def progress_step(span: dict) -> dict:
+    """One line of live progress from a finished agent span (display only)."""
+    if span["kind"] == "execute_tool":
+        label = (f"Case {span['case']} · " if span.get("case") else "") + span.get("summary", span["name"])
+    elif span["kind"] == "chat":
+        label = f"Model {span['name'].split('·')[-1].strip()}: deciding the next step"
+    else:
+        label = "Agent finished: " + ((span.get("output") or {}).get("stop", "")
+                                      if isinstance(span.get("output"), dict) else "")
+    return {"label": label, "kind": span["kind"], "error": bool(span.get("error")),
+            "dur_s": span.get("dur_s", 0)}
+
+
 @_retry_on_conflict()
-def review() -> None:
+def review(on_step=None) -> None:
     """Same as Streamlit's review: plan, then act on what needs no person
-    (escalations, accepts under the limit) and prepare evidence for challenges."""
+    (escalations, accepts under the limit) and prepare evidence for challenges.
+    on_step(step) receives each finished step for the live progress overlay."""
+    step = on_step or (lambda s: None)
     with LOCK:
         c = client()
         try:
-            items, run_info = run_logged("Review", agent.plan_with_run, c, st.load(), NEW_INFO)
+            items, run_info = run_logged("Review", agent.plan_with_run, c, st.load(), NEW_INFO,
+                                         on_span=lambda s: step(progress_step(s)))
         except ActionError as e:
             _notice(f"Review failed: {e}", "error")
             return
@@ -235,10 +270,15 @@ def review() -> None:
             d, key = it["decision"], item_key(it["row"], it["decision"])
             try:
                 if d.action == ESCALATE or not d.needs_human:
+                    step({"label": f"Case {d.case} · " + ("escalating to a person" if d.action == ESCALATE
+                                                          else "completing automatically in Airwallex"),
+                          "kind": "action", "error": False, "dur_s": 0})
                     run_logged(f"Case {d.case}", agent.act, c, st.load(), it, lambda _: "y")
                     outcomes[key] = {"text": "Escalated to a person" if d.action == ESCALATE
                                      else "Completed automatically", "kind": "ok"}
                 elif d.action == CHALLENGE:
+                    step({"label": f"Case {d.case} · preparing the evidence file", "kind": "action",
+                          "error": False, "dur_s": 0})
                     run_logged(f"Case {d.case} evidence", agent.evidence_for, c, st.load(),
                                it["row"], it["flags"])
             except ActionError as e:
@@ -246,14 +286,54 @@ def review() -> None:
 
         at = _now()
         rejections = st.load().get("rejections", {})
+        summary = {k: run_info.get(k) for k in ("id", "finished", "stop", "steps", "summary",
+                                                "disagreements")}
 
         def store(w):
-            w["review"] = {"at": at, "items": [_serialize(it) for it in items], "agent": run_info}
+            w["review"] = {"at": at, "items": [_serialize(it) for it in items], "agent": summary}
             w["outcomes"] = outcomes
-            record_plans(w, items, at, rejections)
+            record_plans(w, items, at, rejections, run_info.get("id"))
+            record_run(w, run_info, at)
         _update_web(store)
         if not items:
             _notice("No open disputes need a response.", "info")
+
+
+def run_view(case: str, run_id: str) -> dict | None:
+    """One stored agent run for the case page's drawer, with the tabs for every
+    run of this case. Read-only; None if the run isn't kept (or isn't this case's)."""
+    w = _web(st.load())
+    runs = w.get("runs", [])
+    run = next((r for r in runs if r["id"] == run_id), None)
+    if run is None or case not in (run.get("outcomes") or {}):
+        return None
+    hist = w.get("plans", {}).get(case, [])
+    dispute_ids = {h["dispute_id"] for h in hist}
+    if len(dispute_ids) > 1:                   # only the current dispute's versions
+        hist = [h for h in hist if h["dispute_id"] == hist[-1]["dispute_id"]]
+    return {"run": view.agent_run(run, case), "tabs": view.run_tabs(runs, hist, case),
+            "selected": run_id, "case": case}
+
+
+def start_review() -> str:
+    """Start a review in a background thread and return its progress id at once.
+    The browser polls progress.get(id). One review at a time: a second click joins
+    the running one. On Fargate the HTTP request no longer waits for the model, so
+    load balancer timeouts don't apply."""
+    running = progress.running()
+    if running:
+        return running
+    job_id = progress.start()
+
+    def work():
+        try:
+            review(on_step=lambda s: progress.add(job_id, s))
+            progress.finish(job_id)
+        except Exception as e:  # noqa: BLE001 - shown in the overlay, never crashes the server
+            progress.finish(job_id, error=str(e) or type(e).__name__)
+
+    threading.Thread(target=work, name=f"review-{job_id}", daemon=True).start()
+    return job_id
 
 
 @_retry_on_conflict()
@@ -412,6 +492,18 @@ def page() -> dict:
                 card["verdict_line"] = view.VERDICT_LINE_REVISED[d.action]
                 card["thread"] = card["thread"][:-1] + view.revised_nodes(rev, it["flags"])
 
+        # Agent runs per case (tabs of the run drawer), linked to the plan versions
+        run_tabs = {}
+        for r in rows:
+            hist = [h for h in web.get("plans", {}).get(r["case"], []) if h["dispute_id"] == r["id"]]
+            run_tabs[r["case"]] = view.run_tabs(web.get("runs", []), hist, r["case"])
+        for card in cards:
+            steps = {t["id"]: t["steps"] for t in run_tabs.get(card["case"], [])}
+            card["latest_run"] = (run_tabs.get(card["case"]) or [None])[-1]
+            if card.get("revision"):
+                for v in ("v1", "v2"):
+                    card["revision"][v]["steps"] = steps.get(card["revision"][v]["run_id"])
+
         # Queue table
         queue = [{
             "case": r["case"], "amount": view.money(r["amount"], r["currency"]),
@@ -495,6 +587,6 @@ def page() -> dict:
                        "fees": f"{fees:,.2f}"},
             "activity": list(reversed(web.get("activity", [])))[:40],
             "fee": f"{DISPUTE_FEE:,.0f}",
-            "review_steps": [{"case": r["case"], "product": ORDERS[r["case"]]["product"]}
-                             for r in sorted(open_rows, key=lambda r: r["due_at"])],
+            "runs": run_tabs,
+            "reviewing": progress.running(),   # a background review is in progress
         }

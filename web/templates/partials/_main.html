@@ -26,7 +26,7 @@
   {%- else -%}none{%- endif -%}
 {%- endmacro %}
 
-<div id="main" class="shell" data-steps='{{ (p.review_steps or []) | tojson }}'>
+<div id="main" class="shell" {% if p.reviewing %}data-reviewing="{{ p.reviewing }}"{% endif %}>
 
   <aside class="sidebar" aria-label="Main navigation"><div class="sidebar-inner">
     <button type="button" class="brand" data-splash aria-haspopup="dialog" aria-label="About Dispute Desk">{{ ui.logo(32) }}<span class="lbl wordmark">dispute desk</span></button>
@@ -79,7 +79,7 @@
         {% if p.has_disputes %}
         <div class="page-actions">
           {% if p.review_at %}<span class="muted small">Last review {{ p.review_at[11:16] }} UTC</span>{% endif %}
-          {{ ui.action_button("/review", "Review open disputes", "primary") }}
+          {{ ui.review_button() }}
         </div>
         {% endif %}
       </div>
@@ -183,8 +183,8 @@
 
       {% set rev = c.revision if c else None %}
       {% if rev %}
-      {{ ui.bank_news(rev) }}
-      {{ ui.plan_comparison(rev.v1, rev.v2, rev.approver, rev.changed) }}
+      {{ ui.bank_news(rev, c.latest_run) }}
+      {{ ui.plan_comparison(rev.v1, rev.v2, rev.approver, rev.changed, q.case) }}
       {% endif %}
 
       <div class="case-cols">
@@ -194,7 +194,7 @@
           <section class="card">
             <h2 class="card-title">Not reviewed yet</h2>
             <p class="muted">Run a review. The agent reads the evidence, weighs the win chance against the fee, and proposes an action.</p>
-            {{ ui.action_button("/review", "Review open disputes", "primary") }}
+            {{ ui.review_button() }}
           </section>
     {% else %}
           {% set action = "RESOLVED" if rr else ("ESCALATE" if (e or (c and c.action == "ESCALATE")) else c.action) %}
@@ -229,11 +229,15 @@
           </div></div>
       {% endif %}
 
+          {% set explanation = (e.explanation if e else (c.explanation if c else "")) or "" %}
+          {% if explanation | trim %}
           <details class="card why">
-            <summary>{% if rev %}<span class="with-tag">{{ ui.source_icon("agent") }}Agent’s explanation</span>{% else %}<span>Why, in plain words</span>{% endif %}{{ ui.icon("chevron") }}</summary>
-            <p>{{ e.explanation if e else c.explanation }}</p>
+            <summary><span class="with-tag">{{ ui.source_icon("agent") }}Agent’s explanation</span>{{ ui.icon("chevron") }}</summary>
+            <p>{{ explanation }}</p>
             {% if c and c.checks and not e %}<ul class="checks-list">{% for ch in c.checks %}<li>{{ ch }}</li>{% endfor %}</ul>{% endif %}
+            {{ ui.run_link(q.case, ((p.runs or {}).get(q.case) or [None])[-1]) }}
           </details>
+          {% endif %}
 
       {% if c and c.approval %}
           <section class="card" aria-labelledby="ap">

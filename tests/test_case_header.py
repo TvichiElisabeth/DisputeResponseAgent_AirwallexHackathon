@@ -92,6 +92,31 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("case", ["A", "B", "C"])
+def test_unreviewed_case_has_no_empty_explanation_card(client, case):
+    html = client.get(f"/cases/{case}").text
+    assert "Why, in plain words" not in html and "Agent’s explanation" not in html
+
+
+@pytest.mark.parametrize("case", ["A", "B"])
+def test_reviewed_case_shows_the_agents_explanation(client, case):
+    from merchant.policy import Dispute, EvidenceFlags, decide
+    from records import state as st
+    from web import service
+    r = ROWS[case]
+    flags = EvidenceFlags(prior_undisputed_matches=3, signed_delivery=True, delivery_scanned=True)
+    d = decide(Dispute(case, r["amount"], r["currency"], r["reason_type"], r["stage"], r["status"],
+                       r["due_at"]), flags)
+    it = {"decision": d, "row": dict(r), "flags": flags,
+          "note": {"explanation": f"Plain reason for case {case}.", "what_to_check": []}}
+    s = st.load()
+    s["web"] = {"review": {"at": "2026-11-12T09:14:00+00:00", "items": [service._serialize(it)], "agent": None}}
+    st.save(s)
+    html = client.get(f"/cases/{case}").text
+    assert "Agent’s explanation" in html and f"Plain reason for case {case}." in html
+    assert "Why, in plain words" not in html
+
+
+@pytest.mark.parametrize("case", ["A", "B", "C"])
 def test_every_case_page_uses_the_shared_header(client, case):
     html = client.get(f"/cases/{case}").text
     head = html[html.index('class="casehead-bar"'):html.index("</dl>")]

@@ -3,6 +3,10 @@
 Run (one worker: state lives in records/state.json):
     uvicorn web.main:app --port 8000
 
+Reviews run in a background thread (POST /review answers at once); the page polls
+GET /review/{id}/progress. With STATE_BACKEND=dynamodb the progress lives in the
+table too, so several containers behind a load balancer can serve the polls.
+
 Every action returns the whole main section re-rendered, so the numbers,
 the queue, the cards and the outcomes never disagree after a click.
 """
@@ -14,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from records import progress
 from web import service
 
 BASE = Path(__file__).resolve().parent
@@ -75,10 +80,28 @@ def sandbox_reject_a(request: Request):
 
 # ---- the agent ----
 
-@app.post("/review", response_class=HTMLResponse)
-def review(request: Request):
-    service.review()
-    return _main(request)
+@app.post("/review")
+def review():
+    """Starts the review in the background and answers at once with its progress id.
+    The page polls /review/{id}/progress, then re-draws itself when it's done."""
+    return JSONResponse({"id": service.start_review()}, status_code=202)
+
+
+@app.get("/review/{job_id}/progress")
+def review_progress(job_id: str):
+    job = progress.get(job_id)
+    if job is None:
+        return JSONResponse({"error": "unknown review"}, status_code=404)
+    return JSONResponse({"id": job["id"], "status": job["status"], "steps": job["steps"],
+                         "error": job.get("error", "")})
+
+
+@app.get("/cases/{case}/runs/{run_id}", response_class=HTMLResponse)
+def agent_run(request: Request, case: str, run_id: str):
+    r = service.run_view(case.upper(), run_id)
+    if r is None:
+        return HTMLResponse("<p class='muted'>This agent run is no longer kept.</p>", status_code=404)
+    return templates.TemplateResponse(request, "partials/_run.html", {"r": r})
 
 
 @app.post("/cases/{case}/approve", response_class=HTMLResponse)

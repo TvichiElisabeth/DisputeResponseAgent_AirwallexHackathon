@@ -12,6 +12,7 @@ Run it again after new information (e.g. the bank rejects our evidence):
 cases already handled are skipped; changed cases are re-decided.
 """
 import argparse
+import uuid
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 
@@ -233,7 +234,7 @@ def plan(client, state, new_information: str | None = None, llm=None) -> list[di
 
 
 def plan_with_run(client, state, new_information: str | None = None,
-                  llm=None) -> tuple[list[dict], dict]:
+                  llm=None, on_span=None) -> tuple[list[dict], dict]:
     """The agent investigates the queue through typed tools and proposes a plan;
     code decides each case. Returns (items, run_info).
 
@@ -249,7 +250,8 @@ def plan_with_run(client, state, new_information: str | None = None,
     # Callers pass the rejection notice on every review; the agent only hears it when
     # an open case really was rejected (otherwise it would be told something untrue).
     rejected = any(r["case"] in state.get("rejections", {}) for r in rows)
-    run = agent_loop.run_agent(client, state, rows, new_information if rejected else None, llm=llm)
+    run = agent_loop.run_agent(client, state, rows, new_information if rejected else None, llm=llm,
+                               on_span=on_span)
     proposals = {it["case"]: it for it in (run.ctx.plan or {}).get("items", [])}
     print(f"Agent: {run.stop} after {run.steps} model turn(s), "
           f"{sum(1 for t in run.trace if t['kind'] == 'tool')} tool call(s)")
@@ -299,9 +301,16 @@ def plan_with_run(client, state, new_information: str | None = None,
         note["trace"] = [t for t in run.trace if t.get("case") == case]
         items.append({"row": row, "flags": flags, "decision": decision, "note": note})
 
-    run_info = {"finished": run.finished, "stop": run.stop, "steps": run.steps,
-                "summary": (run.ctx.plan or {}).get("summary", ""),
-                "disagreements": (run.ctx.plan or {}).get("disagreements", []),
+    plan = run.ctx.plan or {}
+    run_info = {"id": f"run_{uuid.uuid4().hex[:10]}" if run.started_at else "",
+                "trigger": "Bank rejected evidence" if rejected else "Dispute opened",
+                "started_at": run.started_at, "duration_s": run.duration_s, "model": run.model,
+                "finished": run.finished, "stop": run.stop, "steps": run.steps,
+                "summary": plan.get("summary", ""),
+                "disagreements": plan.get("disagreements", []),
+                "plan_items": plan.get("items", []),   # case, action, reason, policy_action, agrees
+                "outcomes": {it["row"]["case"]: it["decision"].action for it in items},
+                "spans": run.spans,
                 "trace": run.trace}
     return items, run_info
 
