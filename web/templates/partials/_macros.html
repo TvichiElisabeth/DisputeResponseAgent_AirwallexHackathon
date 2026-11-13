@@ -110,6 +110,90 @@
                  "PRODUCT_NOT_RECEIVED": "The cardholder says the item never arrived.",
                  "CREDIT_NOT_PROCESSED": "The cardholder says they are owed a refund that was never issued."} %}
 
+{# "New" marker: the cyan half-D, for information that arrived after the first plan. #}
+{% macro newtag() %}<span class="newtag"><i class="mark" aria-hidden="true"></i>New</span>{% endmacro %}
+
+{# A plan action: CHALLENGE (solid charcoal), ACCEPT (solid grey), ESCALATE (outline). #}
+{% macro act(kind, text, cls="") %}<span class="act act-{{ kind }} {{ cls }}"><i class="mark" aria-hidden="true"></i>{{ text }}</span>{% endmacro %}
+
+{# One timeline entry. Used by the evidence timeline and by "New from the bank".
+   meta overrides the grey line after the name (e.g. "Bank · 09:12"). #}
+{% macro tl_item(n, stage="", reason_type="", meta=None) %}
+{% set k = source_kind(n) %}
+<li class="tl-item">
+  {{ source_icon(k, missing=(n.kind == "missing")) }}
+  <div class="tl-body">
+    <div class="tl-head">
+      <strong>{{ "Cardholder’s bank (Visa)" if k == "bank" else n.who }}</strong>
+      {% set label = "" if SOURCES[k] == n.who else SOURCES[k] %}
+      {% if meta %}<span class="muted small">{{ meta }}</span>
+      {% elif k == "bank" and n.event %}<span class="muted small">{{ label }} · {{ n.when }}</span>
+      {% else %}<span class="muted small">{{ label }}{% if label and (k == "bank" or n.when) %} · {% endif %}{% if k == "bank" %}Opened the dispute{% if stage %} at {{ stage if stage == "RFI" else stage | replace("_", " ") | lower }}{% endif %}{% elif n.when %}{{ n.when }}{% endif %}</span>{% endif %}
+      {% if n.new %}{{ newtag() }}{% endif %}
+      {% if n.weight == "for" %}<span class="tag tag-for"><i class="mark" aria-hidden="true"></i>Helps us</span>
+      {% elif n.weight == "against" %}<span class="tag tag-against"><i class="mark" aria-hidden="true"></i>Hurts us</span>{% endif %}
+    </div>
+    {% if k == "bank" and not n.event %}
+      <p>{{ CLAIMS.get(reason_type, "The cardholder disputes this payment.") }}</p>
+    {% elif n.facts %}
+      <dl class="facts">
+        {% for label, value in n.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+      </dl>
+    {% else %}
+      <p>{{ n.text }}{% if n.aside %} <span class="muted">{{ n.aside }}</span>{% endif %}</p>
+    {% endif %}
+  </div>
+</li>
+{% endmacro %}
+
+{# The bank's new information and the agent's reaction, at the top of the case page. #}
+{% macro bank_news(rev) %}
+<section class="card glowcard" aria-labelledby="nb">
+  <span class="edge" aria-hidden="true"></span><span class="edge edge-b" aria-hidden="true"></span>
+  <div class="card-head">
+    <h2 id="nb" class="with-tag">New from the bank {{ newtag() }}</h2>
+    <time class="muted small" datetime="{{ rev.bank.at }}">{{ rev.bank.date }} UTC</time>
+  </div>
+  <ol class="tl">
+    {{ tl_item({"who": "Cardholder’s bank (Visa)", "kind": "bank", "event": "rejected", "weight": "against",
+                "text": "The issuing bank rejected our evidence on Case " ~ rev.case ~ " (" ~ rev.order ~ ", " ~ rev.amount ~ ") and moved it to " ~ rev.bank.stage ~ "."},
+               meta="Bank · " ~ rev.bank.time) }}
+    {{ tl_item({"who": "Dispute Desk agent", "kind": "agent",
+                "text": "The agent reviewed the case again.",
+                "aside": ("The plan moves from " ~ rev.v1.verdict ~ " to " ~ rev.v2.verdict ~ ".") if rev.changed else "The plan stays " ~ rev.v2.verdict ~ "."},
+               meta="Agent · " ~ rev.agent_time) }}
+  </ol>
+</section>
+{% endmacro %}
+
+{# Initial plan vs revised plan, for this case only. #}
+{% macro plan_compare(rev) %}
+<section class="card flush" aria-labelledby="pl">
+  <div class="card-head padded">
+    <h2 id="pl" class="with-tag">Plan for this case {% if rev.changed %}{{ act("challenge", "Changed", "act-flag") }}{% else %}<span class="muted small">Unchanged</span>{% endif %}</h2>
+    <span class="muted small">Revised after the bank’s decision</span>
+  </div>
+  <div class="table-scroll">
+    <table class="plan">
+      <thead>
+        <tr>
+          <th scope="col" class="plan-col"><b>Initial plan</b><small>v{{ rev.v1.version }} · {{ rev.v1.at }}</small></th>
+          <th scope="col" class="plan-col"><b>Revised plan</b><small>v{{ rev.v2.version }} · {{ rev.v2.at }}</small></th>
+          <th scope="col">Who approves</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr {% if rev.changed %}class="chg"{% endif %}>
+          <td>{{ act(rev.v1.kind, rev.v1.action, "was" if rev.changed else "") }}<span class="why-line {% if rev.changed %}was{% endif %}">{{ rev.v1.line }}</span></td>
+          <td>{{ act(rev.v2.kind, rev.v2.action, "now") }}<span class="why-line">{{ rev.v2.line }}</span></td>
+          <td class="who">{{ rev.who }}<span class="why-line muted">{{ rev.who_why }}</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endmacro %}
+
 {# The evidence as a timeline: the bank's claim first, evidence next, the agent's reading last. #}
 {% macro thread(nodes, raw_sheet=None, stage="", reason_type="") %}
 {% set counts = namespace(order=[], seen={}) %}
@@ -126,30 +210,7 @@
     {% for k in counts.order %}<li>{{ source_icon(k) }}<span>{{ SOURCES[k] }}</span><span class="muted">{{ counts.seen[k] }}</span></li>{% endfor %}
   </ul>
   <ol class="tl">
-    {% for n in nodes %}
-    {% set k = source_kind(n) %}
-    <li class="tl-item">
-      {{ source_icon(k, missing=(n.kind == "missing")) }}
-      <div class="tl-body">
-        <div class="tl-head">
-          <strong>{{ "Cardholder’s bank (Visa)" if k == "bank" else n.who }}</strong>
-          {% set label = "" if SOURCES[k] == n.who else SOURCES[k] %}
-          <span class="muted small">{{ label }}{% if label and (k == "bank" or n.when) %} · {% endif %}{% if k == "bank" %}Opened the dispute{% if stage %} at {{ stage if stage == "RFI" else stage | replace("_", " ") | lower }}{% endif %}{% elif n.when %}{{ n.when }}{% endif %}</span>
-          {% if n.weight == "for" %}<span class="tag tag-for"><i class="mark" aria-hidden="true"></i>Helps us</span>
-          {% elif n.weight == "against" %}<span class="tag tag-against"><i class="mark" aria-hidden="true"></i>Hurts us</span>{% endif %}
-        </div>
-        {% if k == "bank" %}
-          <p>{{ CLAIMS.get(reason_type, "The cardholder disputes this payment.") }}</p>
-        {% elif n.facts %}
-          <dl class="facts">
-            {% for label, value in n.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
-          </dl>
-        {% else %}
-          <p>{{ n.text }}</p>
-        {% endif %}
-      </div>
-    </li>
-    {% endfor %}
+    {% for n in nodes %}{{ tl_item(n, stage, reason_type) }}{% endfor %}
   </ol>
 </section>
 {% endmacro %}

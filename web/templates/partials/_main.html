@@ -198,6 +198,12 @@
         </div>
       </section>
 
+      {% set rev = c.revision if c else None %}
+      {% if rev %}
+      {{ ui.bank_news(rev) }}
+      {{ ui.plan_compare(rev) }}
+      {% endif %}
+
       <div class="case-cols">
         <div class="case-left">
 
@@ -213,7 +219,7 @@
             <span class="verdict-icon">{{ ui.verdict_icon(action if action != "RESOLVED" else "ACCEPT") }}</span>
             <div>
               <h2 id="verdict-word">{% if rr %}Resolved{% elif action == "ESCALATE" %}Escalated{% else %}{{ c.verdict }}{% endif %}</h2>
-              <p class="muted">{% if rr %}Accepted by {{ rr.by }} on {{ rr.at }} UTC{% if rr.plan.should_refund %}, with a refund{% else %}, with no separate refund: the bank already returned the money{% endif %}.{% elif e %}{{ e.reason }}{% else %}{{ c.verdict_line }}{% endif %}</p>
+              <p class="muted">{% if rr %}Accepted by {{ rr.by }} on {{ rr.at }} UTC{% if rr.plan.should_refund %}, with a refund{% else %}, with no separate refund: the bank already returned the money{% endif %}.{% elif e %}{{ e.reason }}{% else %}{{ c.verdict_line }}{% if rev and rev.changed %} <s>{{ rev.v1.verdict }}</s> in plan v{{ rev.v1.version }}.{% endif %}{% endif %}</p>
               {% if c and c.outcome and action not in ("ESCALATE", "RESOLVED") %}
                 <p class="outcome outcome-{{ c.outcome.kind }}" role="status"><i class="mark" aria-hidden="true"></i>{{ c.outcome.text }}</p>
               {% endif %}
@@ -225,7 +231,7 @@
             <div class="card stat">
               <span class="stat-label">Win chance</span>
               <span class="stat-value">{{ c.p_win }}</span>
-              <span class="stat-sub">Policy minimum {{ c.bar.min_label if c.bar else "50%" }}</span>
+              <span class="stat-sub">Policy minimum {{ c.bar.min_label if c.bar else "50%" }}{% if rev and rev.v1.p_win != rev.v2.p_win %} · <s>{{ rev.v1.p_win }}</s> in v{{ rev.v1.version }}{% endif %}</span>
             </div>
             <div class="card stat">
               <span class="stat-label">Cost if we accept</span>
@@ -235,13 +241,13 @@
             <div class="card stat">
               <span class="stat-label">Expected cost if we challenge</span>
               <span class="stat-value">{{ c.cost_challenge }}</span>
-              <span class="stat-sub">{% if c.cheaper == "challenge" %}<span class="tag tag-for"><i class="mark" aria-hidden="true"></i>Cheaper</span>{% endif %}<span>USD, fee plus the chance of losing</span></span>
+              <span class="stat-sub">{% if c.cheaper == "challenge" %}<span class="tag tag-for"><i class="mark" aria-hidden="true"></i>Cheaper</span>{% endif %}<span>USD, fee plus the chance of losing{% if rev and rev.v1.cost_challenge != rev.v2.cost_challenge %} · <s>{{ rev.v1.cost_challenge }}</s> in v{{ rev.v1.version }}{% endif %}</span></span>
             </div>
           </div></div>
       {% endif %}
 
           <details class="card why">
-            <summary><span>Why, in plain words</span>{{ ui.icon("chevron") }}</summary>
+            <summary>{% if rev %}<span class="with-tag">{{ ui.source_icon("agent") }}Agent’s explanation</span>{% else %}<span>Why, in plain words</span>{% endif %}{{ ui.icon("chevron") }}</summary>
             <p>{{ e.explanation if e else c.explanation }}</p>
             {% if c and c.checks and not e %}<ul class="checks-list">{% for ch in c.checks %}<li>{{ ch }}</li>{% endfor %}</ul>{% endif %}
           </details>
@@ -251,7 +257,11 @@
             <h2 id="ap" class="card-title">Your approval is needed</h2>
             <p class="muted">These terms are locked. If anything changes before you click, the server refuses.</p>
             <dl class="terms">
-              {% for label, value in c.approval.rows if label in ("Action", "Evidence file") %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+              {% for label, value in c.approval.rows if label in ("Action", "Evidence file") %}<div><dt>{{ label }}</dt><dd>{{ value | capitalize if label == "Action" else value }}</dd></div>{% endfor %}
+              {% if rev %}
+              <div><dt>Stage</dt><dd>{{ rev.bank.stage }} <span class="muted was-note">was {{ rev.bank.from_stage }}</span></dd></div>
+              <div><dt>Plan</dt><dd>v{{ rev.v2.version }} · {{ rev.v2.at }}</dd></div>
+              {% endif %}
               <div class="terms-wide"><dt>Also locked</dt><dd class="muted">The amount, customer, order, product, reason and stage shown on this page</dd></div>
             </dl>
           </section>
@@ -304,14 +314,14 @@
 
         <div class="case-right">
           {% set nodes = (c.thread if c else (e.thread if e else [])) %}
-          {% if nodes %}{{ ui.thread(nodes, raw_sheet=("raw-" ~ q.case) if raw else None, stage=q.stage, reason_type=q.reason_type) }}{% endif %}
+          {% if nodes %}{{ ui.thread(nodes, raw_sheet=("raw-" ~ q.case) if raw else None, stage=(rev.bank.from_stage if rev else q.stage), reason_type=q.reason_type) }}{% endif %}
         </div>
       </div>
 
       {# ---- Sticky action bar: only when there's something to decide ---- #}
       {% if c and c.approval %}
       <div class="actionbar" role="region" aria-label="Decision">
-        <div class="bar-msg muted">Waiting for your approval</div>
+        <div class="bar-msg muted">{% if rev and rev.changed %}Revised plan waiting for your approval{% else %}Waiting for your approval{% endif %}</div>
         <div class="bar-actions">
           <button type="button" class="lock" aria-describedby="fp-{{ c.case }}">
             {{ ui.icon("lock") }}<span class="sr-only">Terms fingerprint</span>

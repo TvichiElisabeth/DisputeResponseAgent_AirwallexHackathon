@@ -9,6 +9,7 @@
   --grey: #7c7c7c;
   --blue: #0052ff;     /* good for us: helps, cheaper */
   --red: #c4262b;      /* urgent or against us */
+  --cyan: #00a2c7;     /* new information: "New" marker and edge light */
   --ring: 0 0 0 1px var(--line);
   --r: 10px;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 40px;
@@ -142,7 +143,7 @@ h2 { font-size: 16px; font-weight: 600; line-height: 1.4; }
 .stat-sub { font-size: 12px; color: var(--muted); }
 
 /* ---------- tables ---------- */
-.table-wrap { overflow-x: auto; }
+.table-wrap, .table-scroll { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; min-width: 860px; }
 .table th { padding: var(--s3) var(--s5); background: var(--hover); text-align: left; font-size: 12px; font-weight: 500;
   color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
@@ -393,6 +394,45 @@ body.sheet-open { overflow: hidden; }
   .splash-center h1 svg { width: 40px; height: 40px; }
 }
 
+/* ---------- revised plan after new information ---------- */
+.with-tag { display: inline-flex; align-items: center; gap: var(--s3); }
+.newtag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ink); }
+.newtag .mark { background: var(--cyan); }
+
+/* Edge light: two blurred circles mostly clipped outside the card's right edge. */
+.glowcard { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--s4); }
+.glowcard > :not(.edge) { position: relative; }
+.edge { position: absolute; width: 288px; height: 288px; border-radius: 50%; filter: blur(64px); pointer-events: none;
+  right: -250px; top: -90px; background: var(--cyan); opacity: .55;
+  animation: edge-in .6s .2s cubic-bezier(.175, .885, .32, 1.1) both; }
+.edge-b { top: 10px; right: -262px; background: var(--blue); opacity: .35; }
+@keyframes edge-in { from { transform: translateX(90px); } to { transform: none; } }
+
+/* Plan actions: challenge solid charcoal, accept solid grey, escalate outline. */
+.act { display: inline-flex; align-items: center; gap: var(--s2); font-size: 12px; font-weight: 500; letter-spacing: .06em; color: var(--ink); }
+.act-challenge .mark { background: var(--ink); }
+.act-accept .mark { background: var(--grey); }
+.act-escalate .mark { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); }
+.act.now { font-weight: 700; }
+.act.was, .why-line.was { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+.act.was .mark { opacity: .5; }
+.act-flag { font-weight: 700; letter-spacing: 0; }
+.why-line { display: block; margin-top: 6px; font-size: 13px; line-height: 1.45; max-width: 46ch; color: var(--ink); }
+.why-line.muted { color: var(--muted); margin-top: 2px; }
+
+.plan { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14px; }
+.plan th { padding: var(--s3) var(--s5); background: var(--hover); text-align: left; font-size: 12px; font-weight: 500;
+  color: var(--muted); white-space: nowrap; vertical-align: bottom; }
+.plan th b { display: block; font-weight: 500; color: var(--ink); }
+.plan th small { display: block; font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.plan .plan-col { width: 38%; }
+.plan td { padding: 18px var(--s5); border-top: 1px solid var(--line); vertical-align: top; }
+.plan td.who { font-weight: 500; }
+.plan tr.chg > * { background: rgba(0, 162, 199, .07); }
+.plan tr.chg > :first-child { box-shadow: inset 2px 0 0 var(--ink); }
+.was-note { font-weight: 400; }
+.why summary .with-tag { font-weight: 600; }
+
 /* ---------- below 1280: sidebar becomes an icon rail ---------- */
 @media (max-width: 1279px) {
   :root { --sidebar: 72px; }
@@ -417,4 +457,5 @@ body.sheet-open { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) {
   .spinner, .steps li.active .step-icon { animation-duration: 2s; }
+  .edge { animation: none; }
 }

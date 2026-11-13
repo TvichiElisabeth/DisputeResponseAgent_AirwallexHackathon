@@ -159,6 +159,35 @@ def approval_for(state: dict, it: dict) -> tuple[dict, str] | None:
     return terms_shown(row, d, detail, evidence)
 
 
+# ---------------- plan history ----------------
+
+def _snapshot(it: dict, at: str, rejected: bool) -> dict:
+    """What the policy decided for one case in one review, as plain data."""
+    d, row = it["decision"], it["row"]
+    agent_note = it["note"].get("agent") or {}
+    return {"at": at, "dispute_id": row["id"], "stage": row["stage"], "action": d.action,
+            "p_win": d.p_win, "required_p": d.required_p, "cost_accept": d.cost_if_accept,
+            "cost_challenge": d.expected_cost_if_challenge, "needs_human": d.needs_human,
+            "amount": float(row["amount"]), "currency": row["currency"],
+            "rejected_before": rejected, "explanation": it["note"].get("explanation", ""),
+            "proposed": agent_note.get("proposed"), "disagrees": bool(agent_note.get("disagrees"))}
+
+
+def record_plans(w: dict, items: list[dict], at: str, rejections: dict) -> None:
+    """Append one plan version per reviewed case. Kept across the bank's rejection,
+    so the page can show the initial plan next to the revised one. A review that
+    decides the same thing again adds nothing; a new dispute starts a new history."""
+    plans = w.setdefault("plans", {})
+    for it in items:
+        case = it["decision"].case
+        snap = _snapshot(it, at, case in rejections)
+        history = [h for h in plans.get(case, []) if h["dispute_id"] == snap["dispute_id"]]
+        last = history[-1] if history else None
+        if last and all(last[k] == snap[k] for k in ("action", "stage", "p_win")):
+            continue
+        plans[case] = history + [snap]
+
+
 # ---------------- actions ----------------
 
 @_retry_on_conflict()
@@ -171,7 +200,7 @@ def seed() -> None:
         except ActionError as e:
             _notice(str(e), "error")
             return
-        _update_web(lambda w: (w.pop("review", None), w.pop("outcomes", None)))
+        _update_web(lambda w: (w.pop("review", None), w.pop("outcomes", None), w.pop("plans", None)))
         _notice("Payments recorded and disputes opened. Run a review next.", "ok")
 
 
@@ -183,6 +212,7 @@ def reject_a() -> None:
         except ActionError as e:
             _notice(str(e), "error")
             return
+        # The current plan is out of date; its history ("plans") stays for the comparison.
         _update_web(lambda w: (w.pop("review", None), w.pop("outcomes", None)))
         _notice("The issuing bank rejected Case A's evidence. Review the queue again.", "info")
 
@@ -213,9 +243,13 @@ def review() -> None:
             except ActionError as e:
                 outcomes[key] = {"text": f"Not completed: {e}", "kind": "error"}
 
+        at = _now()
+        rejections = st.load().get("rejections", {})
+
         def store(w):
-            w["review"] = {"at": _now(), "items": [_serialize(it) for it in items], "agent": run_info}
+            w["review"] = {"at": at, "items": [_serialize(it) for it in items], "agent": run_info}
             w["outcomes"] = outcomes
+            record_plans(w, items, at, rejections)
         _update_web(store)
         if not items:
             _notice("No open disputes need a response.", "info")
@@ -367,6 +401,15 @@ def page() -> dict:
                 "thread": view.thread(d.case, row, EVIDENCE_THREAD.get(d.case, []), it["flags"]),
                 "outcome": outcome, "approval": approval,
             })
+            history = [h for h in web.get("plans", {}).get(d.case, []) if h["dispute_id"] == row["id"]]
+            rev = view.revision(history, state.get("rejections", {}).get(d.case))
+            if rev:
+                rev.update(case=d.case, order=ORDERS[d.case]["order_id"],
+                           amount=view.money(row["amount"], row["currency"]))
+                card = cards[-1]
+                card["revision"] = rev
+                card["verdict_line"] = view.VERDICT_LINE_REVISED[d.action]
+                card["thread"] = card["thread"][:-1] + view.revised_nodes(rev, it["flags"])
 
         # Queue table
         queue = [{

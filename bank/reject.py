@@ -3,6 +3,7 @@
 Moves the dispute RFI -> CHARGEBACK, back to REQUIRES_RESPONSE.
 """
 import sys
+from datetime import datetime, timezone
 
 from bank.sandbox import AirwallexSandboxSimulator
 from core.client import AirwallexClient
@@ -28,8 +29,12 @@ def reject_evidence(client: AirwallexClient, state: dict, case_key: str) -> dict
         due_days=7,
         comment="Evidence does not prove the cardholder took part in the transaction.",
     )
-    done[case_key] = {"stage": d.get("stage"), "status": d.get("status")}
-    dispute.update(done[case_key])
+    # When it happened and where it came from: the case page shows "Bank · 09:12"
+    # and "Chargeback (was RFI)" from these.
+    done[case_key] = {"stage": d.get("stage"), "status": d.get("status"),
+                      "from_stage": dispute.get("stage", "RFI"),
+                      "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    dispute.update({"stage": d.get("stage"), "status": d.get("status")})
     st.save(state)
     print(f"[{case_key}] issuer rejected the evidence -> {d.get('stage')} / {d.get('status')}")
     return done[case_key]

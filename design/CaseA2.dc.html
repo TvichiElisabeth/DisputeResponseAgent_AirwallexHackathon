@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Case A · Revised plan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f8f8f7}
+*{box-sizing:border-box}
+a{color:#1a1a1a;text-decoration:none}a:hover{color:#000000}
+.sidebar{width:240px;flex:0 0 240px;background:#ffffff;box-shadow:0 0 0 1px #e3e3e2;padding:16px 12px;display:flex;flex-direction:column;gap:8px}
+.nav-a{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-radius:8px;color:#1a1a1a;font-weight:500;position:relative}
+.nav-a:hover{background:#f0f0ee;color:#1a1a1a}
+.nav-a.on{background:#1a1a1a;color:#f8f8f7}
+.count{margin-left:auto;min-width:0;height:auto;padding:0;background:none;color:inherit;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;justify-content:center}
+.card{background:#ffffff;border-radius:10px;box-shadow:0 0 0 1px #e3e3e2;padding:24px}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#1a1a1a;white-space:nowrap;background:none!important}
+.dot{width:6px;height:12px;border-radius:0 6px 6px 0;display:inline-block;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border-radius:8px;border:0;font:600 14px Inter,system-ui,sans-serif;cursor:pointer}
+.btn-p{background:#1a1a1a;color:#f8f8f7}.btn-p:hover{background:#000000}
+.btn-s{background:#ffffff;color:#1a1a1a;box-shadow:inset 0 0 0 1px #e3e3e2}.btn-s:hover{background:#f0f0ee}
+.btn-t{background:transparent;color:#1a1a1a;height:32px;padding:0 8px;font-weight:500}.btn-t:hover{background:#f0f0ee}
+.lock{position:relative;width:44px;height:44px;border-radius:8px;border:0;background:transparent;color:#656565;display:inline-flex;align-items:center;justify-content:center;cursor:help}
+.lock .tip{display:none;position:absolute;bottom:52px;right:0;width:300px;padding:12px;border-radius:8px;background:#1a1a1a;color:#f8f8f7;font-size:12px;font-weight:400;text-align:left;line-height:1.5}
+.lock:hover .tip,.lock:focus .tip{display:block}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+button:focus-visible,a:focus-visible{outline:2px solid #1a1a1a;outline-offset:2px}
+.glowcard{position:relative;overflow:hidden}
+.glowcard>*:not(.edge){position:relative}
+.edge{position:absolute;width:288px;height:288px;border-radius:50%;filter:blur(64px);right:-250px;top:-90px;background:#00a2c7;opacity:.55;pointer-events:none;animation:edgeIn .6s .2s cubic-bezier(.175,.885,.32,1.1) both}
+.edge.b{background:#0052ff;opacity:.35;top:10px;right:-262px}
+@keyframes edgeIn{from{transform:translateX(90px)}to{transform:none}}
+.newtag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#1a1a1a}
+.newtag i{display:inline-block;width:6px;height:12px;border-radius:0 6px 6px 0;background:#00a2c7}
+.plan{width:100%;min-width:720px;border-collapse:collapse;font-size:14px}
+.plan th{font-size:12px;font-weight:500;color:#656565;text-align:left;padding:12px 24px;background:#f0f0ee;white-space:nowrap;vertical-align:bottom}
+.plan th small{display:block;font-size:12px;font-weight:400;color:#656565;font-variant-numeric:tabular-nums}
+.plan th b{display:block;font-weight:500;color:#1a1a1a}
+.plan td{padding:18px 24px;border-top:1px solid #e3e3e2;vertical-align:top}
+.plan tbody th{background:transparent;font-weight:400}
+.plan tr.chg>*{background:rgba(0,162,199,.07)}
+.plan tr.chg>:first-child{box-shadow:inset 2px 0 0 #1a1a1a}
+.act{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.06em;font-weight:500;color:#1a1a1a}
+.act i{display:inline-block;width:6px;height:12px;border-radius:0 6px 6px 0;flex:none}
+.act.now{font-weight:700}
+.act.was,.why.was{color:#656565;text-decoration:line-through;text-decoration-color:#656565}
+.act.was i{opacity:.5}
+.why{display:block;margin-top:6px;font-size:13px;line-height:1.45;max-width:46ch;color:#1a1a1a}
+.muted{color:#656565}
+.tile{flex:none;width:32px;height:32px;border-radius:8px;background:#f0f0ee;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+@media (prefers-reduced-motion:reduce){.edge{animation:none}}
+@media (max-width:1279px){.sidebar{width:72px;flex-basis:72px;padding:16px 8px}.lbl{display:none}.nav-a{justify-content:center;padding:0}.count{position:absolute;top:2px;right:2px;min-width:18px;height:18px;padding:0 4px}}
+</style>
+</helmet>
+<div style="display: flex; min-height: 100vh; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; background: #f8f8f7">
+
+  <aside class="sidebar" aria-label="Main navigation">
+    <div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 12px; margin-bottom: 8px">
+      <svg width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Dispute Desk" style="flex: none"><rect width="32" height="32" rx="7" fill="#1a1a1a"></rect><rect x="15.25" y="8" width="1.5" height="16" fill="#f8f8f7"></rect><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="#f8f8f7"></path><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="#f8f8f7" stroke-width="1.5"></path></svg>
+      <span class="lbl" style="font-size: 20px; font-weight: 400; letter-spacing: -0.045em; color: #1a1a1a">dispute desk</span>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 4px">
+      <a class="nav-a on" href="Main.dc.html" aria-current="page" aria-label="Needs you, 2 cases">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+        <span class="lbl">Needs you</span><span class="count">2</span>
+      </a>
+      <a class="nav-a" href="Main.dc.html">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"></path></svg>
+        <span class="lbl">All disputes</span>
+      </a>
+      <a class="nav-a" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg>
+        <span class="lbl">Auto-resolved</span>
+      </a>
+      <a class="nav-a" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>
+        <span class="lbl">Rules</span>
+      </a>
+      <a class="nav-a" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>
+        <span class="lbl">Settings</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column">
+    <main style="flex: 1; padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1360px; width: 100%">
+
+      <section class="card" aria-labelledby="amt" style="display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px">
+          <a href="Main.dc.html" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 500">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Queue
+          </a>
+          <button type="button" class="btn-t btn" onClick="{{openDetails}}">Details</button>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 40px">
+          <div style="display: flex; flex-direction: column">
+            <span style="font-size: 12px; color: #656565">Case A · amount</span>
+            <h1 id="amt" style="margin: 0; font-size: 28px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums">USD 1,240.00</h1>
+          </div>
+          <dl style="display: flex; flex-wrap: wrap; gap: 16px 40px; margin: 0">
+            <div><dt style="font-size: 12px; color: #656565">Customer</dt><dd style="margin: 0; font-weight: 500">j.marin@example.com</dd></div>
+            <div><dt style="font-size: 12px; color: #656565">Order</dt><dd style="margin: 0; font-weight: 500">ORD-9902 · Laptop</dd></div>
+            <div><dt style="font-size: 12px; color: #656565">Reason</dt><dd style="margin: 0; font-weight: 500">Fraud, card not present <span style="color: #656565; font-weight: 400">Visa 10.4</span></dd></div>
+            <div><dt style="font-size: 12px; color: #656565">Deadline</dt><dd style="margin: 0"><span style="display: inline-flex; flex-direction: column; gap: 6px; width: 120px"><span style="display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums"><span style="font-size: 20px; font-weight: 400; letter-spacing: -0.03em; line-height: 1.1; color: #1a1a1a">6d</span><span style="font-size: 12px; color: #656565">left</span></span><span title="Time left out of 7 days" style="display: block; height: 2px; background: #e3e3e2"><span style="display: block; height: 2px; width: 86%; background: #1a1a1a"></span></span></span></dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="card glowcard" aria-labelledby="nb" style="display: flex; flex-direction: column; gap: 16px">
+        <span aria-hidden="true" class="edge"></span><span aria-hidden="true" class="edge b"></span>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px">
+          <h2 id="nb" style="margin: 0; font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; gap: 12px">New from the bank <span class="newtag"><i></i>New</span></h2>
+          <time datetime="2026-11-12T09:12" style="font-size: 12px; color: #656565; font-variant-numeric: tabular-nums">12 Nov 2026, 09:12</time>
+        </div>
+        <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+          <li style="display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; position: relative; padding-bottom: 20px">
+            <span aria-hidden="true" style="position: absolute; left: 15.5px; top: 32px; bottom: 0; width: 1px; background: #e3e3e2"></span>
+            <span aria-hidden="true" style="width: 32px; height: 32px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; color: #1a1a1a; border-radius: 3.6px; background: #f0f0ee"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"></path><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20h18"></path></svg></span>
+            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="font-weight: 500">Cardholder’s bank (Visa)</span><span style="font-size: 12px; color: #656565">Bank · 09:12</span><span class="pill" style="color: #656565"><span class="dot" style="background: #C4262B"></span>Hurts us</span></div>
+              <p style="margin: 0">The issuing bank rejected our evidence on Case A (ORD-9902, USD 1,240.00) and moved it to Chargeback.</p>
+            </div>
+          </li>
+          <li style="display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px">
+            <span aria-hidden="true" style="width: 32px; height: 32px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; color: #1a1a1a; border-radius: 7px; background: #1a1a1a; color: #f8f8f7"><svg width="70%" height="70%" viewBox="6 6 20 20"><rect x="15.25" y="8" width="1.5" height="16" fill="currentColor"></rect><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="currentColor"></path><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></span>
+            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="font-weight: 500">Dispute Desk agent</span><span style="font-size: 12px; color: #656565">Agent · 09:14</span></div>
+              <p style="margin: 0">The agent reviewed the case again. <span class="muted">The plan moves from Challenge to Accept.</span></p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="card" aria-labelledby="pl" style="padding: 0; overflow: hidden; display: flex; flex-direction: column">
+        <div style="padding: 24px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px">
+          <h2 id="pl" style="margin: 0; font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; gap: 12px">Plan for this case <span class="act" style="font-weight: 700; letter-spacing: 0; font-size: 12px"><i style="background: #1a1a1a"></i>Changed</span></h2>
+          <span style="font-size: 12px; color: #656565">Revised after the bank’s decision</span>
+        </div>
+        <div style="overflow-x: auto">
+          <table class="plan">
+            <thead>
+              <tr>
+                <th scope="col" style="width: 38%"><b>Initial plan</b><small>v1 · 11 Nov, 12:00</small></th>
+                <th scope="col" style="width: 38%"><b>Revised plan</b><small>v2 · 12 Nov, 09:14</small></th>
+                <th scope="col">Who approves</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="chg">
+                <td><span class="act was"><i style="background: #1a1a1a"></i>CHALLENGE</span><span class="why was">85% win chance; expected cost 211.00 vs 1,240.00 to accept.</span></td>
+                <td><span class="act now"><i style="background: #7c7c7c"></i>ACCEPT</span><span class="why">Evidence rejected, now at Chargeback. Win chance 34%, under the 50% minimum; challenging is expected to cost 1,318.40 vs 1,240.00 to accept.</span></td>
+                <td style="font-weight: 500">You<span class="why muted" style="margin-top: 2px">Over USD 50</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+        <div style="flex: 3 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+          <section class="card" aria-labelledby="vw" style="display: flex; align-items: center; gap: 16px">
+            <span style="flex: none; width: 48px; height: 48px; border-radius: 10px; background: #f0f0ee; color: #1a1a1a; display: inline-flex; align-items: center; justify-content: center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg>
+            </span>
+            <div>
+              <h2 id="vw" style="margin: 0; font-size: 20px; font-weight: 600">Accept</h2>
+              <p style="margin: 0; color: #656565">Let it go: fighting now costs more than it’s likely to win. <span style="text-decoration: line-through">Challenge</span> in plan v1.</p>
+            </div>
+          </section>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px">
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px">
+              <span style="color: #656565">Win chance</span>
+              <span style="font-size: 28px; font-weight: 600; line-height: 1.2">34%</span>
+              <span style="font-size: 12px; color: #656565">Policy minimum 50% · <span style="text-decoration: line-through">85%</span> in v1</span>
+            </div>
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px">
+              <span style="display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #656565">Cost if we accept <span class="pill" style="color: #0052ff"><span class="dot" style="background: #0052ff"></span>Cheaper</span></span>
+              <span style="font-size: 28px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums">1,240.00</span>
+              <span style="font-size: 12px; color: #656565">USD, the full amount</span>
+            </div>
+            <div class="card" style="display: flex; flex-direction: column; gap: 8px">
+              <span style="display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #656565">Expected cost if we challenge</span>
+              <span style="font-size: 28px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums">1,318.40</span>
+              <span style="font-size: 12px; color: #656565">USD, fee plus the chance of losing · <span style="text-decoration: line-through">211.00</span> in v1</span>
+            </div>
+          </div>
+
+          <section class="card" style="padding: 0">
+            <button type="button" onClick="{{toggleWhy}}" aria-expanded="{{whyExpanded}}" style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border: 0; background: transparent; font: 600 16px Inter, system-ui, sans-serif; color: #1a1a1a; cursor: pointer; text-align: left; border-radius: 10px">
+              <span style="display: inline-flex; align-items: center; gap: 12px">
+                <span aria-hidden="true" style="width: 32px; height: 32px; flex: none; border-radius: 7px; background: #1a1a1a; color: #f8f8f7; display: inline-flex; align-items: center; justify-content: center"><svg width="70%" height="70%" viewBox="6 6 20 20"><rect x="15.25" y="8" width="1.5" height="16" fill="currentColor"></rect><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="currentColor"></path><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></span>
+                Agent’s explanation
+              </span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{chevron}}"><path d="M6 9l6 6 6-6"></path></svg>
+            </button>
+            <sc-if value="{{why}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; padding: 0 24px 24px 68px; max-width: calc(68ch + 68px)">The bank has already seen our strongest evidence, the three earlier orders from the same device and the DHL signature, and rejected it. The case is now at Chargeback, where the odds of reversing that are about one in three. That is below our 50% minimum, and fighting on is expected to cost more than refunding the USD 1,240.00, so the agent now recommends accepting.</p>
+            </sc-if>
+          </section>
+
+          <section class="card" aria-labelledby="ap" style="display: flex; flex-direction: column; gap: 16px">
+            <div>
+              <h2 id="ap" style="margin: 0; font-size: 16px; font-weight: 600">Your approval is needed</h2>
+              <p style="margin: 4px 0 0; color: #656565">Case-sensitive information can’t be changed.</p>
+            </div>
+            <dl style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px 24px; margin: 0; padding-top: 16px; border-top: 1px solid #e3e3e2">
+              <div><dt style="font-size: 12px; color: #656565">Action</dt><dd style="margin: 0; font-weight: 500">Accept</dd></div>
+              <div><dt style="font-size: 12px; color: #656565">Stage</dt><dd style="margin: 0; font-weight: 500">Chargeback <span style="color: #656565; font-weight: 400">was RFI</span></dd></div>
+              <div><dt style="font-size: 12px; color: #656565">Plan</dt><dd style="margin: 0; font-weight: 500">v2 · 12 Nov, 09:14</dd></div>
+              <div><dt style="font-size: 12px; color: #656565">Also locked</dt><dd style="margin: 0; color: #656565">Amount, customer, order, reason above</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="card" aria-labelledby="ev" style="flex: 2 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px">
+            <h2 id="ev" style="margin: 0; font-size: 16px; font-weight: 600">Evidence the agent read</h2>
+            <button type="button" class="btn btn-t" onClick="{{openRaw}}">Raw text</button>
+          </div>
+          <ul aria-label="Evidence sources" style="list-style: none; margin: 0; padding: 0 0 16px; display: flex; flex-wrap: wrap; gap: 10px 24px; border-bottom: 1px solid #e3e3e2">
+            <sc-for list="{{sources}}" as="s" hint-placeholder-count="4">
+              <li style="display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #656565">
+                <span aria-hidden="true" style="{{s.node}}">
+                  <sc-if value="{{s.isCustomer}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg></sc-if>
+                  <sc-if value="{{s.isSupport}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4z"></path><path d="M8 9.5h8M8 12.5h5"></path></svg></sc-if>
+                  <sc-if value="{{s.isBank}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"></path><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20h18"></path></svg></sc-if>
+                  <sc-if value="{{s.isReturns}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"></path><path d="M4 8l8 4 8-4M12 12v8"></path></svg></sc-if>
+                  <sc-if value="{{s.isOrder}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg></sc-if>
+                  <sc-if value="{{s.isCarrier}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v9.5h-11z"></path><path d="M13.5 10h4l3.5 3.5V16h-7.5"></path><circle cx="7" cy="18" r="1.6"></circle><circle cx="17" cy="18" r="1.6"></circle></svg></sc-if>
+                  <sc-if value="{{s.isAgent}}" hint-placeholder-val="{{ false }}"><svg width="70%" height="70%" viewBox="6 6 20 20"><rect x="15.25" y="8" width="1.5" height="16" fill="currentColor"></rect><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="currentColor"></path><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></sc-if>
+                </span>
+                <span style="color: #1a1a1a">{{s.label}}</span><span style="font-variant-numeric: tabular-nums">{{s.count}}</span>
+              </li>
+            </sc-for>
+          </ul>
+          <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+            <sc-for list="{{thread}}" as="n" hint-placeholder-count="5">
+              <li style="display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; position: relative; padding-bottom: 24px">
+                <sc-if value="{{n.line}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="position: absolute; left: 15.5px; top: 32px; bottom: 0; width: 1px; background: #e3e3e2"></span></sc-if>
+                <span aria-hidden="true" style="{{n.node}}">
+                  <sc-if value="{{n.isCustomer}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg></sc-if>
+                  <sc-if value="{{n.isSupport}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4z"></path><path d="M8 9.5h8M8 12.5h5"></path></svg></sc-if>
+                  <sc-if value="{{n.isBank}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"></path><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20h18"></path></svg></sc-if>
+                  <sc-if value="{{n.isReturns}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"></path><path d="M4 8l8 4 8-4M12 12v8"></path></svg></sc-if>
+                  <sc-if value="{{n.isOrder}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg></sc-if>
+                  <sc-if value="{{n.isCarrier}}" hint-placeholder-val="{{ false }}"><svg width="58%" height="58%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v9.5h-11z"></path><path d="M13.5 10h4l3.5 3.5V16h-7.5"></path><circle cx="7" cy="18" r="1.6"></circle><circle cx="17" cy="18" r="1.6"></circle></svg></sc-if>
+                  <sc-if value="{{n.isAgent}}" hint-placeholder-val="{{ false }}"><svg width="70%" height="70%" viewBox="6 6 20 20"><rect x="15.25" y="8" width="1.5" height="16" fill="currentColor"></rect><path d="M16.75 8h1.25a8 8 0 0 1 0 16h-1.25z" fill="currentColor"></path><path d="M15.25 8.75h-1.25a7.25 7.25 0 0 0 0 14.5h1.25" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></sc-if>
+                </span>
+                <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px">
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+                    <span style="font-weight: 500">{{n.who}}</span>
+                    <span style="font-size: 12px; color: #656565">{{n.meta}}</span>
+                    <sc-if value="{{n.isNew}}" hint-placeholder-val="{{ false }}"><span class="newtag"><i></i>New</span></sc-if>
+                    <sc-if value="{{n.helps}}" hint-placeholder-val="{{ false }}"><span class="pill" style="background: #f8f8f7; color: #656565"><span class="dot" style="background: #0052ff"></span>Helps us</span></sc-if>
+                    <sc-if value="{{n.hurts}}" hint-placeholder-val="{{ false }}"><span class="pill" style="background: #f8f8f7; color: #656565"><span class="dot" style="background: #C4262B"></span>Hurts us</span></sc-if>
+                  </div>
+                  <sc-if value="{{n.hasText}}" hint-placeholder-val="{{ true }}"><p style="margin: 0">{{n.text}}</p></sc-if>
+                  <sc-if value="{{n.hasFacts}}" hint-placeholder-val="{{ false }}">
+                    <dl style="margin: 4px 0 0; display: flex; flex-direction: column">
+                      <sc-for list="{{n.facts}}" as="f" hint-placeholder-count="5">
+                        <div style="display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; border-bottom: 1px solid #e3e3e2"><dt style="color: #656565">{{f.k}}</dt><dd style="margin: 0; font-weight: 500">{{f.v}}</dd></div>
+                      </sc-for>
+                    </dl>
+                  </sc-if>
+                </div>
+              </li>
+            </sc-for>
+          </ol>
+        </section>
+      </div>
+    </main>
+
+    <div role="region" aria-label="Decision" style="position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 16px; padding: 16px 32px; background: #ffffff; box-shadow: 0 -1px 0 #e3e3e2">
+      <span style="margin-right: auto; color: #656565">Revised plan waiting for your approval</span>
+      <button type="button" class="lock" aria-label="Terms fingerprinted">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span class="tip">Fingerprint [SHA-256 of the locked terms]. If anything changes before you click, the server refuses.</span>
+      </button>
+      <button type="button" class="btn btn-s">Don't do it</button>
+      <button type="button" class="btn btn-p">Approve and accept</button>
+    </div>
+  </div>
+
+  <sc-if value="{{drawerOpen}}" hint-placeholder-val="{{ false }}">
+    <button type="button" aria-label="Close panel" onClick="{{close}}" style="position: fixed; inset: 0; border: 0; background: rgba(26,26,26,0.4); cursor: pointer"></button>
+    <aside role="dialog" aria-label="{{drawerTitle}}" style="position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: #ffffff; box-shadow: -1px 0 0 #e3e3e2; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600">{{drawerTitle}}</h2>
+        <button type="button" aria-label="Close" onClick="{{close}}" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: #656565; cursor: pointer; display: inline-flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <sc-if value="{{isDetails}}" hint-placeholder-val="{{ true }}">
+        <dl style="margin: 0; display: flex; flex-direction: column">
+          <sc-for list="{{details}}" as="d" hint-placeholder-count="6">
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid #e3e3e2"><dt style="font-size: 12px; color: #656565">{{d.k}}</dt><dd class="mono" style="margin: 0; word-break: break-all">{{d.v}}</dd></div>
+          </sc-for>
+        </dl>
+      </sc-if>
+      <sc-if value="{{isRaw}}" hint-placeholder-val="{{ false }}">
+        <pre class="mono" style="margin: 0; white-space: pre-wrap; line-height: 1.6; color: #1a1a1a">{{raw}}</pre>
+      </sc-if>
+    </aside>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1320}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { why: false, drawer: null }; }
+  renderVals() {
+    var self = this;
+    var KINDS = {
+      customer: { label: 'Customer', shape: 'person' },
+      support: { label: 'Your support', shape: 'person' },
+      bank: { label: 'Bank', shape: 'bank' },
+      returns: { label: 'Returns system', shape: 'system' },
+      order: { label: 'Order history', shape: 'system' },
+      carrier: { label: 'Carrier', shape: 'system' },
+      agent: { label: 'Dispute Desk agent', shape: 'agent' }
+    };
+    var nodeStyle = function (kind, size, missing) {
+      var b = 'width: ' + size + 'px; height: ' + size + 'px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; color: #1a1a1a; ';
+      var sh = KINDS[kind].shape;
+      if (sh === 'person') return b + 'border-radius: 50%; background: #ffffff; ' + (missing ? 'border: 1px dashed #656565; color: #656565' : 'border: 1px solid #e3e3e2');
+      if (sh === 'bank') return b + 'border-radius: 3.6px; background: #f0f0ee';
+      if (sh === 'agent') return b + 'border-radius: ' + (size > 24 ? 7 : 5) + 'px; background: #1a1a1a; color: #f8f8f7';
+      return b + 'border-radius: 3.6px; background: #ffffff; border: 1px solid #e3e3e2';
+    };
+    var flags = function (kind) {
+      return { isCustomer: kind === 'customer', isSupport: kind === 'support', isBank: kind === 'bank', isReturns: kind === 'returns', isOrder: kind === 'order', isCarrier: kind === 'carrier', isAgent: kind === 'agent' };
+    };
+    var sourcesOf = function (list) {
+      var seen = {}, out = [];
+      list.forEach(function (x) {
+        if (x.kind === 'agent') return;
+        if (!seen[x.kind]) { seen[x.kind] = { kind: x.kind, n: 0 }; out.push(seen[x.kind]); }
+        seen[x.kind].n++;
+      });
+      return out.map(function (s) { return Object.assign({ label: KINDS[s.kind].label, count: String(s.n), node: nodeStyle(s.kind, 20, false) }, flags(s.kind)); });
+    };
+    var t = [
+      { who: 'Cardholder’s bank (Visa)', when: 'Opened the dispute', kind: 'bank', text: 'The cardholder says they did not make this purchase.' },
+      { who: 'Order history', when: 'Mar–Jul 2026', kind: 'order', w: 'for', text: '3 earlier orders from the same device and IP. None disputed.' },
+      { who: 'Order history', when: '11 Aug 2026', kind: 'order', text: 'ORD-9013 came from a different device and IP. It was refunded.' },
+      { who: 'DHL', when: '14 Oct 18:02', kind: 'carrier', text: 'Out for delivery.' },
+      { who: 'DHL', when: '14 Oct 19:47', kind: 'carrier', w: 'for', text: 'Delivered. Signed by J. MARIN. Signature image on file.' },
+      { who: 'Cardholder’s bank (Visa)', when: '12 Nov 09:12', kind: 'bank', w: 'against', isNew: true, text: 'Rejected our evidence and moved the case to Chargeback.' },
+      { who: 'Dispute Desk agent', when: 'Read everything again · 09:14', kind: 'agent', isNew: true, facts: [
+        { k: 'Matching earlier orders', v: '3' }, { k: 'Signed delivery', v: 'yes' }, { k: 'Bank decision', v: 'evidence rejected' },
+        { k: 'Stage', v: 'Chargeback' }, { k: 'Win chance', v: '34% (was 85%)' }, { k: 'Refund issued', v: 'no' } ] }
+    ];
+    var d = this.state.drawer;
+    return {
+      why: this.state.why,
+      whyExpanded: this.state.why ? 'true' : 'false',
+      chevron: this.state.why ? 'transform: rotate(180deg)' : '',
+      toggleWhy: function () { self.setState({ why: !self.state.why }); },
+      openRaw: function () { self.setState({ drawer: 'raw' }); },
+      openDetails: function () { self.setState({ drawer: 'details' }); },
+      close: function () { self.setState({ drawer: null }); },
+      drawerOpen: !!d, isRaw: d === 'raw', isDetails: d === 'details',
+      drawerTitle: d === 'raw' ? 'Raw evidence text' : 'Details',
+      sources: sourcesOf(t),
+      thread: t.map(function (n, i) {
+        return Object.assign({}, n, flags(n.kind), {
+          node: nodeStyle(n.kind, 32, n.missing), meta: KINDS[n.kind].label + (n.when ? ' · ' + n.when : ''), helps: n.w === 'for', hurts: n.w === 'against',
+          hasText: !!n.text, hasFacts: !!n.facts, line: i < t.length - 1
+        });
+      }),
+      details: [
+        { k: 'Policy rule', v: 'Rule 3: expected cost, min win chance 0.50' },
+        { k: 'Stage', v: 'CHARGEBACK (was RFI)' },
+        { k: 'Plan', v: 'v2 12 Nov 09:14 (v1 11 Nov 12:00: CHALLENGE)' },
+        { k: 'Reason type', v: 'FRAUDULENT' },
+        { k: 'Evidence SHA-256', v: '[sha256 of evidence_A.txt]' },
+        { k: 'Approval fingerprint', v: '[sha256 of the locked terms]' }
+      ],
+      raw: 'ORDER HISTORY - customer j.marin@example.com\nOrder     Date        Amount    Device     IP             Disputed\nORD-7781  2026-03-02  $  89.00  fp_8c21e9  82.77.14.203   no\nORD-8112  2026-05-17  $ 214.50  fp_8c21e9  82.77.14.203   no\nORD-8840  2026-07-29  $  56.20  fp_8c21e9  82.77.14.203   no\nORD-9013  2026-08-11  $  32.00  fp_41aa07  188.25.9.40    refunded\nORD-9902  2026-10-14  $1240.00  fp_8c21e9  82.77.14.203   <- this dispute\n\nCARRIER (DHL) - ORD-9902\n14 Oct 18:02  Out for delivery\n14 Oct 19:47  Delivered. Signed by: J. MARIN. Signature image on file.'
+    };
+  }
+}
+</script>
+</body>
+</html>
