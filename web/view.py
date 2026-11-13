@@ -1,5 +1,6 @@
 """Display data for the templates. Every number comes from the policy or Airwallex;
 this module only formats it. No decisions are made here."""
+import re
 from datetime import datetime, timezone
 
 from merchant.policy import (AUTO_APPROVE_LIMIT, MIN_CHALLENGE_PROB, URGENT_DAYS, Decision,
@@ -40,6 +41,43 @@ def deadline(due_at: str) -> dict:
         label = f"{d:.0f}d left"
     return {"date": due_at[:10], "days": d, "label": label,
             "urgent": 0 < d < URGENT_DAYS, "passed": d <= 0}
+
+
+def initials(email: str) -> str:
+    """'j.marin@example.com' -> 'JM'; 'sam@x.com' -> 'SA'."""
+    local = (email or "").split("@")[0]
+    parts = [p for p in re.split(r"[._+\-]+", local) if p]
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[1][0]).upper()
+    return local[:2].upper()
+
+
+def deadline_bar(dl: dict, open_: bool) -> dict:
+    """The header's deadline: '6d' / '5h', red under the policy's URGENT_DAYS,
+    bar = time left out of 7 days. Closed cases show no number or bar."""
+    if not open_:
+        return {"open": False}
+    if dl["passed"]:
+        return {"open": True, "passed": True, "urgent": True, "date": dl["date"]}
+    return {"open": True, "passed": False, "num": dl["label"].split(" ")[0], "urgent": dl["urgent"],
+            "pct": round(min(max(dl["days"], 0) / 7, 1) * 100), "date": dl["date"]}
+
+
+def case_header(row: dict, order: dict, claims: dict, claim_source: str, open_: bool,
+                network: str = "Visa") -> dict:
+    """Everything the case header shows, from the live dispute row and the order record."""
+    claim = claims.get(row.get("reason_code") or "")
+    return {
+        "letter": row["case"],
+        "stage": stage_title(row["stage"]),
+        "currency": row["currency"],
+        "amount": f"{float(row['amount']):,.2f}",
+        "claim": {"text": claim, "source": claim_source} if claim else None,
+        "customer": {"email": order["customer"], "initials": initials(order["customer"])},
+        "order": {"id": order["order_id"], "product": order["product"]},
+        "reason": {"type": row["reason_type"], "network": network, "code": row.get("reason_code")},
+        "deadline": deadline_bar(deadline(row["due_at"]), open_),
+    }
 
 
 def pct(x: float) -> str:

@@ -70,6 +70,15 @@ ORDERS = {
     "C": {"customer": "a.popescu@example.com", "order_id": "ORD-9750", "product": "Headphones"},
 }
 
+# What the cardholder's bank says when it opens the dispute, by Visa reason code.
+# Display only (the case header); demo wording that describes each code.
+BANK_CLAIMS = {
+    "10.4": "The cardholder says they did not make this purchase.",            # fraud, card not present
+    "13.1": "The cardholder says the item they paid for never arrived.",       # merchandise not received
+    "13.6": "The cardholder says they returned the item but were never refunded.",  # credit not processed
+}
+BANK_CLAIM_SOURCE = "Cardholder’s bank, opening the dispute"
+
 # The same evidence as EVIDENCE, split into events for the web page's evidence thread.
 # Display only: the model still reads the raw text above. "weight" says which way
 # an event points for the merchant: "for", "against" or "neutral".

@@ -47,6 +47,8 @@
 {%- elif name == "search" %}<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
 {%- elif name == "lock" %}<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
 {%- elif name == "back" %}<path d="M15 18l-6-6 6-6"/>
+{%- elif name == "receipt" %}<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>
+{%- elif name == "bank" %}<path d="M3 9l9-5 9 5"/><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20h18"/>
 {%- elif name == "close" %}<path d="M6 6l12 12M18 6L6 18"/>
 {%- elif name == "chevron" %}<path d="M6 9l6 6 6-6"/>
 {%- elif name == "shield" %}<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>
@@ -56,6 +58,59 @@
 
 {% macro verdict_icon(action) %}
 {% if action == "CHALLENGE" %}{{ icon("shield", 24) }}{% elif action == "ACCEPT" %}{{ icon("check", 24) }}{% else %}{{ icon("person", 24) }}{% endif %}
+{% endmacro %}
+
+{# Case header, shared by every case page. h comes from view.case_header(); no values here.
+   Each fact keeps <dt> before <dd> in the markup; CSS shows the label under the value. #}
+{% macro case_header(h, details_id) %}
+      <div class="casehead-bar">
+        <a class="back" href="/">{{ icon("back", 16) }}Queue</a>
+        <button type="button" class="btn btn-text" data-sheet="{{ details_id }}" aria-expanded="false">Details</button>
+      </div>
+      <section class="casehead" aria-labelledby="amt">
+        <div class="casehead-id">
+          <span class="casehead-who">
+            <span class="casehead-tile" aria-hidden="true">{{ h.letter }}</span>
+            <span class="casehead-label">CASE {{ h.letter }}</span>
+          </span>
+          <span class="casehead-stage">Stage {{ pill(h.stage, "needs") }}</span>
+        </div>
+
+        <div class="casehead-amt">
+          <h1 id="amt"><span class="cur">{{ h.currency }}</span><span class="val">{{ h.amount }}</span></h1>
+          {% if h.claim %}<p class="casehead-claim">“{{ h.claim.text }}” <span class="muted">{{ h.claim.source }}</span></p>{% endif %}
+        </div>
+
+        <dl class="casefacts">
+          <div class="fact">
+            <span class="fnode fnode-round" aria-hidden="true">{{ h.customer.initials }}</span>
+            <div class="fv"><dt>Customer</dt><dd>{{ h.customer.email }}</dd></div>
+          </div>
+          <div class="fact">
+            <span class="fnode" aria-hidden="true">{{ icon("receipt", 21) }}</span>
+            <div class="fv"><dt>Order</dt><dd>{{ h.order.id }} · {{ h.order.product }}</dd></div>
+          </div>
+          <div class="fact">
+            <span class="fnode" aria-hidden="true">{{ icon("bank", 21) }}</span>
+            <div class="fv"><dt>Reason{% if h.reason.code %} · {{ h.reason.network }} {{ h.reason.code }}{% endif %}</dt>
+              <dd>{{ REASONS.get(h.reason.type) or (h.reason.type | replace("_", " ") | lower | capitalize) }}</dd></div>
+          </div>
+          {% set dl = h.deadline %}
+          <div class="fact">
+            <div class="fv fv-due {% if dl.open and dl.urgent %}is-urgent{% endif %}">
+              <dt>Deadline</dt>
+              <dd>
+                {% if not dl.open %}<span class="due-num muted">Closed</span>
+                {% elif dl.passed %}<span class="due-num">Passed</span>
+                {% else %}
+                <span class="due-line" title="Due {{ dl.date }}"><span class="due-num">{{ dl.num }}</span><span class="due-unit">left</span></span>
+                <span class="track" title="Time left out of 7 days"><i style="width: {{ dl.pct }}%"></i></span>
+                {% endif %}
+              </dd>
+            </div>
+          </div>
+        </dl>
+      </section>
 {% endmacro %}
 
 {# The dispute desk mark: two D's on one stem, the claim in outline, the response solid. #}

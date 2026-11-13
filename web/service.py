@@ -26,7 +26,8 @@ from merchant.policy import CHALLENGE, DISPUTE_FEE, ESCALATE, Decision, Evidence
 from merchant.queue import read_queue
 from merchant.record_payments import record_payments
 from records import state as st
-from records.evidence_text import EVIDENCE, EVIDENCE_THREAD, ORDERS
+from records.evidence_text import (BANK_CLAIM_SOURCE, BANK_CLAIMS, EVIDENCE, EVIDENCE_THREAD,
+                                   ORDERS)
 from web import view
 
 NEW_INFO = "The issuing bank rejected our evidence and moved the case to CHARGEBACK."
@@ -420,6 +421,9 @@ def page() -> dict:
             "tone": view.ACTION_TONE.get(proposed.get(r["case"]), "grey"),
             "customer": ORDERS[r["case"]]["customer"], "product": ORDERS[r["case"]]["product"],
             "waiting": r["case"] in waiting, "resolved": r["case"] in resolved,
+            "header": view.case_header(
+                r, ORDERS[r["case"]], BANK_CLAIMS, BANK_CLAIM_SOURCE,
+                open_=r["status"] == "REQUIRES_RESPONSE" and r["case"] not in resolved),
         } for r in sorted(rows, key=lambda r: r["due_at"])]
 
         # Escalations waiting for a person

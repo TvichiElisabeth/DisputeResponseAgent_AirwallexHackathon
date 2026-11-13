@@ -179,24 +179,7 @@
         <a class="btn btn-secondary" href="/">{{ ui.icon("back", 16) }}<span>Back to the queue</span></a>
       </section>
   {% else %}
-      <section class="card case-head" aria-labelledby="amt">
-        <div class="case-head-top">
-          <a class="back" href="/">{{ ui.icon("back", 16) }}Queue</a>
-          <button type="button" class="btn btn-text" data-sheet="details-{{ q.case }}" aria-expanded="false">Details</button>
-        </div>
-        <div class="case-head-main">
-          <div class="amount-block">
-            <span class="muted small">Case {{ q.case }} · amount</span>
-            <h1 id="amt">{{ q.amount }}</h1>
-          </div>
-          <dl class="meta">
-            <div><dt>Customer</dt><dd>{{ q.customer }}</dd></div>
-            <div><dt>Order</dt><dd>{% if order %}{{ order }} · {% endif %}{{ q.product }}</dd></div>
-            <div><dt>Reason</dt><dd>{{ ui.reason(q.reason_type, q.reason_code) }}</dd></div>
-            <div><dt>Deadline</dt><dd>{{ ui.deadline(q.deadline, q.status == "REQUIRES_RESPONSE" and not rr) }}</dd></div>
-          </dl>
-        </div>
-      </section>
+      {{ ui.case_header(q.header, "details-" ~ q.case) }}
 
       {% set rev = c.revision if c else None %}
       {% if rev %}
